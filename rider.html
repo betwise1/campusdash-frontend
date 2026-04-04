@@ -67,7 +67,7 @@
                 </div>
             </div>
             <div class="flex gap-2 sm:gap-3">
-                <a href="rider-payout.html?rider=1" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm transition flex items-center gap-1 sm:gap-2">
+                <a href="rider-payout.html" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm transition flex items-center gap-1 sm:gap-2">
                     <i class="fas fa-wallet text-xs sm:text-sm"></i>
                     <span class="hidden sm:inline">Earnings</span>
                 </a>
@@ -77,6 +77,10 @@
                 <div class="bg-white/20 backdrop-blur-sm px-2 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm">
                     <i class="fas fa-cedi-sign mr-1"></i> <span id="today-earnings">₵0</span>
                 </div>
+                <button onclick="logout()" class="bg-red-500/20 hover:bg-red-500/30 backdrop-blur-sm px-2 sm:px-3 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm transition flex items-center gap-1">
+                    <i class="fas fa-sign-out-alt text-xs sm:text-sm"></i>
+                    <span class="hidden sm:inline">Logout</span>
+                </button>
             </div>
         </div>
     </header>
@@ -224,10 +228,69 @@
             const API_BASE = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
                 ? 'http://localhost:3000'
                 : 'https://campusdash-backend.onrender.com';
-            const RIDER_ID = 1;
-            const RIDER_NAME = 'Rider One';
+
+            // ========== AUTHENTICATION CHECK ==========
+            // Get rider ID from URL or localStorage
+            const urlParams = new URLSearchParams(window.location.search);
+            let RIDER_ID = urlParams.get('rider');
+
+            // If no rider in URL, check localStorage
+            if (!RIDER_ID) {
+                RIDER_ID = localStorage.getItem('riderId');
+            }
+
+            // If still no rider, redirect to login
+            if (!RIDER_ID) {
+                window.location.href = 'rider-login.html';
+            }
+
+            // Get rider name from localStorage or set default
+            let RIDER_NAME = localStorage.getItem('riderName') || `Rider ${RIDER_ID}`;
             const EARNING_PER_DELIVERY = 4;
 
+            // Verify rider exists on backend
+            async function verifyRider() {
+                try {
+                    const res = await fetch(`${API_BASE}/api/riders/${RIDER_ID}/verify`);
+                    if (!res.ok) {
+                        // Rider not found, clear storage and redirect to login
+                        localStorage.removeItem('riderId');
+                        localStorage.removeItem('riderName');
+                        localStorage.removeItem('riderPhone');
+                        window.location.href = 'rider-login.html';
+                    } else {
+                        const data = await res.json();
+                        // Update stored name if needed
+                        if (data.name && data.name !== RIDER_NAME) {
+                            RIDER_NAME = data.name;
+                            localStorage.setItem('riderName', data.name);
+                        }
+                        // Update display
+                        document.getElementById('rider-name').innerText = RIDER_NAME;
+                    }
+                } catch (err) {
+                    console.error('Verification failed:', err);
+                    // Don't redirect on network error - might be temporary
+                }
+            }
+
+            // Logout function
+            function logout() {
+                localStorage.removeItem('riderId');
+                localStorage.removeItem('riderName');
+                localStorage.removeItem('riderPhone');
+                window.location.href = 'rider-login.html';
+            }
+
+            // Update all links to include rider ID
+            function updateLinksWithRiderId() {
+                const links = document.querySelectorAll('a[href="rider-payout.html"]');
+                links.forEach(link => {
+                    link.href = `${link.getAttribute('href')}?rider=${RIDER_ID}`;
+                });
+            }
+
+            // ========== EXISTING CODE CONTINUES ==========
             let refreshInterval, isOnline = true, currentRouteOrder = null, searchTimeout;
             let map = null, searchMarker = null;
 
@@ -412,6 +475,7 @@
             function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m])); }
             function loadData() { loadReadyOrders(); loadMyOrders(); loadRiderEarnings(); }
 
+            // Event Listeners
             document.getElementById('refresh-btn').addEventListener('click', loadData);
             document.getElementById('close-map-modal').addEventListener('click', closeMapModal);
             document.getElementById('open-directions').addEventListener('click', openDirections);
@@ -436,7 +500,9 @@
                 }
             });
             
-            document.getElementById('rider-name').innerText = RIDER_NAME;
+            // Initialize
+            verifyRider();
+            updateLinksWithRiderId();
             loadData();
             refreshInterval = setInterval(() => { if (isOnline) loadData(); }, 20000);
             
@@ -444,6 +510,7 @@
             window.acceptOrder = window.acceptOrder;
             window.deliverOrder = window.deliverOrder;
             window.flyToLocation = window.flyToLocation;
+            window.logout = logout;
         })();
     </script>
 </body>

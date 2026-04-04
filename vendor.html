@@ -70,22 +70,26 @@
                 </div>
             </div>
             <div class="header-buttons flex gap-1 sm:gap-3">
-                <a href="vendor-products.html?vendor=1" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm px-2 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm transition flex items-center gap-1 sm:gap-2">
+                <a href="vendor-products.html" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm px-2 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm transition flex items-center gap-1 sm:gap-2">
                     <i class="fas fa-list-ul text-xs sm:text-sm"></i>
                     <span class="hidden sm:inline">Manage Products</span>
                 </a>
-                <a href="vendor-location.html?vendor=1" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm px-2 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm transition flex items-center gap-1 sm:gap-2">
+                <a href="vendor-location.html" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm px-2 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm transition flex items-center gap-1 sm:gap-2">
                     <i class="fas fa-map-marker-alt text-xs sm:text-sm"></i>
                     <span class="hidden sm:inline">Pickup Location</span>
                 </a>
-                <a href="vendor-payout.html?vendor=1" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm px-2 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm transition flex items-center gap-1 sm:gap-2">
+                <a href="vendor-payout.html" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm px-2 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm transition flex items-center gap-1 sm:gap-2">
                     <i class="fas fa-wallet text-xs sm:text-sm"></i>
                     <span class="hidden sm:inline">Earnings</span>
                 </a>
                 <div class="bg-white/20 backdrop-blur-sm px-2 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium">
-                    <i class="fas fa-building mr-0 sm:mr-1"></i>
+                    <i class="fas fa-user mr-0 sm:mr-1"></i>
                     <span id="vendor-name" class="text-[10px] sm:text-sm">Vendor</span>
                 </div>
+                <button onclick="logout()" class="bg-red-500/20 hover:bg-red-500/30 backdrop-blur-sm px-2 sm:px-3 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm transition flex items-center gap-1">
+                    <i class="fas fa-sign-out-alt text-xs sm:text-sm"></i>
+                    <span class="hidden sm:inline">Logout</span>
+                </button>
             </div>
         </div>
     </header>
@@ -243,8 +247,67 @@
             ? 'http://localhost:3000'
             : 'https://campusdash-backend.onrender.com';
 
+        // ========== AUTHENTICATION CHECK ==========
+        // Get vendor ID from URL or localStorage
         const urlParams = new URLSearchParams(window.location.search);
-        const VENDOR_ID = urlParams.get('vendor') || 1;
+        let VENDOR_ID = urlParams.get('vendor');
+
+        // If no vendor in URL, check localStorage
+        if (!VENDOR_ID) {
+            VENDOR_ID = localStorage.getItem('vendorId');
+        }
+
+        // If still no vendor, redirect to login
+        if (!VENDOR_ID) {
+            window.location.href = 'vendor-login.html';
+        }
+
+        // Get vendor name from localStorage or set default
+        let VENDOR_NAME = localStorage.getItem('vendorName') || `Vendor ${VENDOR_ID}`;
+
+        // Verify vendor exists on backend
+        async function verifyVendor() {
+            try {
+                const res = await fetch(`${API_BASE}/api/vendors/${VENDOR_ID}/verify`);
+                if (!res.ok) {
+                    // Vendor not found, clear storage and redirect to login
+                    localStorage.removeItem('vendorId');
+                    localStorage.removeItem('vendorName');
+                    localStorage.removeItem('vendorPhone');
+                    window.location.href = 'vendor-login.html';
+                } else {
+                    const data = await res.json();
+                    // Update stored name if needed
+                    if (data.name && data.name !== VENDOR_NAME) {
+                        VENDOR_NAME = data.name;
+                        localStorage.setItem('vendorName', data.name);
+                    }
+                    // Update display
+                    document.getElementById('vendor-name').innerText = VENDOR_NAME;
+                }
+            } catch (err) {
+                console.error('Verification failed:', err);
+                // Don't redirect on network error - might be temporary
+            }
+        }
+
+        // Logout function
+        function logout() {
+            localStorage.removeItem('vendorId');
+            localStorage.removeItem('vendorName');
+            localStorage.removeItem('vendorPhone');
+            window.location.href = 'vendor-login.html';
+        }
+
+        // Update all links to include vendor ID
+        function updateLinksWithVendorId() {
+            const links = document.querySelectorAll('a[href="vendor-products.html"], a[href="vendor-location.html"], a[href="vendor-payout.html"]');
+            links.forEach(link => {
+                link.href = `${link.getAttribute('href')}?vendor=${VENDOR_ID}`;
+            });
+        }
+
+        // ========== EXISTING CODE CONTINUES ==========
         let refreshInterval;
         let currentFilter = 'all';
         let allOrders = [];
@@ -515,14 +578,14 @@
             });
         });
         
-        // Set vendor name
-        document.getElementById('vendor-name').innerText = `Vendor ${VENDOR_ID}`;
-        
-        // Initial load
+        // Initialize
+        verifyVendor();
+        updateLinksWithVendorId();
         loadOrders();
         refreshInterval = setInterval(loadOrders, 30000);
         
         window.showLocationOnMap = showLocationOnMap;
+        window.logout = logout;
     </script>
 </body>
 </html>

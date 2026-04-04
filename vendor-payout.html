@@ -40,13 +40,17 @@
                 </div>
             </div>
             <div class="flex gap-2">
-                <a href="vendor.html?vendor=1" class="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-full text-xs transition flex items-center gap-1">
+                <a href="vendor.html" class="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-full text-xs transition flex items-center gap-1">
                     <i class="fas fa-arrow-left text-xs"></i>
                     <span class="hidden sm:inline">Dashboard</span>
                 </a>
                 <div class="bg-white/20 px-3 py-1.5 rounded-full text-xs">
                     <i class="fas fa-building mr-1"></i> <span id="vendor-name">Vendor</span>
                 </div>
+                <button onclick="logout()" class="bg-red-500/20 hover:bg-red-500/30 px-2 sm:px-3 py-1.5 rounded-full text-xs transition flex items-center gap-1">
+                    <i class="fas fa-sign-out-alt text-xs"></i>
+                    <span class="hidden sm:inline">Logout</span>
+                </button>
             </div>
         </div>
     </header>
@@ -138,186 +142,248 @@
     </footer>
 
     <script>
-        const API_BASE = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
-            ? 'http://localhost:3000'
-            : 'https://campusdash-backend.onrender.com';
-        
-        const urlParams = new URLSearchParams(window.location.search);
-        const VENDOR_ID = urlParams.get('vendor') || 1;
+        (function() {
+            const API_BASE = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
+                ? 'http://localhost:3000'
+                : 'https://campusdash-backend.onrender.com';
 
-        document.getElementById('vendor-name').innerText = `Vendor ${VENDOR_ID}`;
+            // ========== AUTHENTICATION CHECK ==========
+            // Get vendor ID from URL or localStorage
+            const urlParams = new URLSearchParams(window.location.search);
+            let VENDOR_ID = urlParams.get('vendor');
 
-        // Load wallet data
-        async function loadWallet() {
-            try {
-                const res = await fetch(`${API_BASE}/api/vendors/${VENDOR_ID}/wallet`);
-                const data = await res.json();
-                
-                const balance = parseFloat(data.wallet?.balance || 0).toFixed(2);
-                const totalEarned = parseFloat(data.wallet?.total_earned || 0).toFixed(2);
-                
-                document.getElementById('wallet-balance').innerText = `₵${balance}`;
-                document.getElementById('total-earned').innerText = `₵${totalEarned}`;
-                
-                renderTransactions(data.transactions || []);
-            } catch (err) {
-                console.error('Error loading wallet:', err);
-                document.getElementById('transactions-container').innerHTML = '<div class="p-6 text-center text-gray-400 text-sm">Failed to load transactions</div>';
+            // If no vendor in URL, check localStorage
+            if (!VENDOR_ID) {
+                VENDOR_ID = localStorage.getItem('vendorId');
             }
-        }
 
-        function renderTransactions(transactions) {
-            const container = document.getElementById('transactions-container');
-            if (!transactions || transactions.length === 0) {
-                container.innerHTML = '<div class="p-6 text-center text-gray-400 text-sm">No transactions yet</div>';
-                return;
+            // If still no vendor, redirect to login
+            if (!VENDOR_ID) {
+                window.location.href = 'vendor-login.html';
             }
-            
-            container.innerHTML = transactions.map(t => `
-                <div class="transaction-item p-4 flex sm:flex-row flex-col justify-between items-start sm:items-center gap-2">
-                    <div class="flex-1">
-                        <div class="font-medium text-gray-800 text-sm">${t.type?.toUpperCase() || 'Transaction'}</div>
-                        <div class="text-xs text-gray-400 mt-0.5">${new Date(t.created_at).toLocaleString()}</div>
-                        <div class="text-xs text-gray-400 mt-1">${t.description || ''}</div>
-                    </div>
-                    <div class="transaction-amount text-right sm:text-left">
-                        <div class="font-bold ${t.amount > 0 ? 'text-green-600' : 'text-red-600'} text-sm">
-                            ${t.amount > 0 ? '+' : ''}₵${Math.abs(t.amount).toFixed(2)}
+
+            // Get vendor name from localStorage or set default
+            let VENDOR_NAME = localStorage.getItem('vendorName') || `Vendor ${VENDOR_ID}`;
+
+            // Verify vendor exists on backend
+            async function verifyVendor() {
+                try {
+                    const res = await fetch(`${API_BASE}/api/vendors/${VENDOR_ID}/verify`);
+                    if (!res.ok) {
+                        localStorage.removeItem('vendorId');
+                        localStorage.removeItem('vendorName');
+                        localStorage.removeItem('vendorPhone');
+                        window.location.href = 'vendor-login.html';
+                    } else {
+                        const data = await res.json();
+                        if (data.name && data.name !== VENDOR_NAME) {
+                            VENDOR_NAME = data.name;
+                            localStorage.setItem('vendorName', data.name);
+                        }
+                        document.getElementById('vendor-name').innerText = VENDOR_NAME;
+                    }
+                } catch (err) {
+                    console.error('Verification failed:', err);
+                }
+            }
+
+            // Logout function
+            function logout() {
+                localStorage.removeItem('vendorId');
+                localStorage.removeItem('vendorName');
+                localStorage.removeItem('vendorPhone');
+                window.location.href = 'vendor-login.html';
+            }
+
+            // Update all links to include vendor ID
+            function updateLinksWithVendorId() {
+                const links = document.querySelectorAll('a[href="vendor.html"]');
+                links.forEach(link => {
+                    link.href = `${link.getAttribute('href')}?vendor=${VENDOR_ID}`;
+                });
+            }
+
+            // ========== EXISTING CODE CONTINUES ==========
+            // Display vendor name
+            document.getElementById('vendor-name').innerText = VENDOR_NAME;
+
+            // Load wallet data
+            async function loadWallet() {
+                try {
+                    const res = await fetch(`${API_BASE}/api/vendors/${VENDOR_ID}/wallet`);
+                    const data = await res.json();
+                    
+                    const balance = parseFloat(data.wallet?.balance || 0).toFixed(2);
+                    const totalEarned = parseFloat(data.wallet?.total_earned || 0).toFixed(2);
+                    
+                    document.getElementById('wallet-balance').innerText = `₵${balance}`;
+                    document.getElementById('total-earned').innerText = `₵${totalEarned}`;
+                    
+                    renderTransactions(data.transactions || []);
+                } catch (err) {
+                    console.error('Error loading wallet:', err);
+                    document.getElementById('transactions-container').innerHTML = '<div class="p-6 text-center text-gray-400 text-sm">Failed to load transactions</div>';
+                }
+            }
+
+            function renderTransactions(transactions) {
+                const container = document.getElementById('transactions-container');
+                if (!transactions || transactions.length === 0) {
+                    container.innerHTML = '<div class="p-6 text-center text-gray-400 text-sm">No transactions yet</div>';
+                    return;
+                }
+                
+                container.innerHTML = transactions.map(t => `
+                    <div class="transaction-item p-4 flex sm:flex-row flex-col justify-between items-start sm:items-center gap-2">
+                        <div class="flex-1">
+                            <div class="font-medium text-gray-800 text-sm">${t.type?.toUpperCase() || 'Transaction'}</div>
+                            <div class="text-xs text-gray-400 mt-0.5">${new Date(t.created_at).toLocaleString()}</div>
+                            <div class="text-xs text-gray-400 mt-1">${t.description || ''}</div>
                         </div>
-                        <div class="text-xs text-gray-400">${t.status || 'completed'}</div>
+                        <div class="transaction-amount text-right sm:text-left">
+                            <div class="font-bold ${t.amount > 0 ? 'text-green-600' : 'text-red-600'} text-sm">
+                                ${t.amount > 0 ? '+' : ''}₵${Math.abs(t.amount).toFixed(2)}
+                            </div>
+                            <div class="text-xs text-gray-400">${t.status || 'completed'}</div>
+                        </div>
                     </div>
-                </div>
-            `).join('');
-        }
+                `).join('');
+            }
 
-        // Load payout settings
-        async function loadPayoutSettings() {
-            try {
-                const res = await fetch(`${API_BASE}/api/vendors/${VENDOR_ID}/location`);
-                const data = await res.json();
-                if (data.mobile_money_number) {
-                    document.getElementById('mobile-money').value = data.mobile_money_number;
+            // Load payout settings
+            async function loadPayoutSettings() {
+                try {
+                    const res = await fetch(`${API_BASE}/api/vendors/${VENDOR_ID}/location`);
+                    const data = await res.json();
+                    if (data.mobile_money_number) {
+                        document.getElementById('mobile-money').value = data.mobile_money_number;
+                    }
+                    if (data.bank_account_details) {
+                        document.getElementById('bank-name').value = data.bank_account_details.bank_name || '';
+                        document.getElementById('account-number').value = data.bank_account_details.account_number || '';
+                    }
+                } catch (err) {
+                    console.error('Error loading payout settings:', err);
                 }
-                if (data.bank_account_details) {
-                    document.getElementById('bank-name').value = data.bank_account_details.bank_name || '';
-                    document.getElementById('account-number').value = data.bank_account_details.account_number || '';
-                }
-            } catch (err) {
-                console.error('Error loading payout settings:', err);
             }
-        }
 
-        // Save payout settings
-        document.getElementById('save-settings').addEventListener('click', async () => {
-            const mobileMoney = document.getElementById('mobile-money').value;
-            const bankName = document.getElementById('bank-name').value;
-            const accountNumber = document.getElementById('account-number').value;
-            
-            if (!mobileMoney && !bankName) {
-                alert('Please enter at least a mobile money number or bank account details');
-                return;
-            }
-            
-            const saveBtn = document.getElementById('save-settings');
-            const originalText = saveBtn.innerHTML;
-            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Saving...';
-            saveBtn.disabled = true;
-            
-            try {
-                const res = await fetch(`${API_BASE}/api/vendors/${VENDOR_ID}/payout-settings`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        mobile_money_number: mobileMoney,
-                        bank_account_details: bankName || accountNumber ? { bank_name: bankName, account_number: accountNumber } : null
-                    })
-                });
-                if (res.ok) {
-                    alert('✅ Payout settings saved successfully!');
-                } else {
-                    throw new Error('Save failed');
-                }
-            } catch (err) {
-                console.error(err);
-                alert('Failed to save settings. Please try again.');
-            } finally {
-                saveBtn.innerHTML = originalText;
-                saveBtn.disabled = false;
-            }
-        });
-
-        // Request payout modal
-        const modal = document.getElementById('payout-modal');
-        const requestBtn = document.getElementById('request-payout-btn');
-        const cancelPayout = document.getElementById('cancel-payout');
-        const confirmPayout = document.getElementById('confirm-payout');
-        const payoutAmount = document.getElementById('payout-amount');
-        const payoutMethod = document.getElementById('payout-method');
-        
-        requestBtn.addEventListener('click', () => {
-            payoutAmount.value = '';
-            modal.classList.remove('hidden');
-        });
-        
-        cancelPayout.addEventListener('click', () => {
-            modal.classList.add('hidden');
-        });
-        
-        // Close modal when clicking outside
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.classList.add('hidden');
-            }
-        });
-        
-        confirmPayout.addEventListener('click', async () => {
-            const amount = parseFloat(payoutAmount.value);
-            const method = payoutMethod.value;
-            
-            if (isNaN(amount) || amount < 10) {
-                alert('Please enter a valid amount (minimum ₵10)');
-                return;
-            }
-            
-            const currentBalance = parseFloat(document.getElementById('wallet-balance').innerText.replace('₵', ''));
-            if (amount > currentBalance) {
-                alert(`Insufficient balance. Your current balance is ₵${currentBalance.toFixed(2)}`);
-                return;
-            }
-            
-            confirmPayout.disabled = true;
-            confirmPayout.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Processing...';
-            
-            try {
-                const res = await fetch(`${API_BASE}/api/vendors/${VENDOR_ID}/request-payout`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ amount, payment_method: method })
-                });
+            // Save payout settings
+            document.getElementById('save-settings').addEventListener('click', async () => {
+                const mobileMoney = document.getElementById('mobile-money').value;
+                const bankName = document.getElementById('bank-name').value;
+                const accountNumber = document.getElementById('account-number').value;
                 
-                const data = await res.json();
-                if (res.ok) {
-                    alert(`✅ Payout request submitted! Amount: ₵${amount.toFixed(2)}`);
-                    modal.classList.add('hidden');
-                    loadWallet();
-                } else {
-                    alert(data.error || 'Failed to request payout');
+                if (!mobileMoney && !bankName) {
+                    alert('Please enter at least a mobile money number or bank account details');
+                    return;
                 }
-            } catch (err) {
-                console.error(err);
-                alert('Failed to request payout. Please try again.');
-            } finally {
-                confirmPayout.disabled = false;
-                confirmPayout.innerHTML = 'Confirm';
-            }
-        });
+                
+                const saveBtn = document.getElementById('save-settings');
+                const originalText = saveBtn.innerHTML;
+                saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Saving...';
+                saveBtn.disabled = true;
+                
+                try {
+                    const res = await fetch(`${API_BASE}/api/vendors/${VENDOR_ID}/payout-settings`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            mobile_money_number: mobileMoney,
+                            bank_account_details: bankName || accountNumber ? { bank_name: bankName, account_number: accountNumber } : null
+                        })
+                    });
+                    if (res.ok) {
+                        alert('✅ Payout settings saved successfully!');
+                    } else {
+                        throw new Error('Save failed');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert('Failed to save settings. Please try again.');
+                } finally {
+                    saveBtn.innerHTML = originalText;
+                    saveBtn.disabled = false;
+                }
+            });
 
-        document.getElementById('refresh-balance-btn').addEventListener('click', () => {
+            // Request payout modal
+            const modal = document.getElementById('payout-modal');
+            const requestBtn = document.getElementById('request-payout-btn');
+            const cancelPayout = document.getElementById('cancel-payout');
+            const confirmPayout = document.getElementById('confirm-payout');
+            const payoutAmount = document.getElementById('payout-amount');
+            const payoutMethod = document.getElementById('payout-method');
+            
+            requestBtn.addEventListener('click', () => {
+                payoutAmount.value = '';
+                modal.classList.remove('hidden');
+            });
+            
+            cancelPayout.addEventListener('click', () => {
+                modal.classList.add('hidden');
+            });
+            
+            // Close modal when clicking outside
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.add('hidden');
+                }
+            });
+            
+            confirmPayout.addEventListener('click', async () => {
+                const amount = parseFloat(payoutAmount.value);
+                const method = payoutMethod.value;
+                
+                if (isNaN(amount) || amount < 10) {
+                    alert('Please enter a valid amount (minimum ₵10)');
+                    return;
+                }
+                
+                const currentBalance = parseFloat(document.getElementById('wallet-balance').innerText.replace('₵', ''));
+                if (amount > currentBalance) {
+                    alert(`Insufficient balance. Your current balance is ₵${currentBalance.toFixed(2)}`);
+                    return;
+                }
+                
+                confirmPayout.disabled = true;
+                confirmPayout.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Processing...';
+                
+                try {
+                    const res = await fetch(`${API_BASE}/api/vendors/${VENDOR_ID}/request-payout`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ amount, payment_method: method })
+                    });
+                    
+                    const data = await res.json();
+                    if (res.ok) {
+                        alert(`✅ Payout request submitted! Amount: ₵${amount.toFixed(2)}`);
+                        modal.classList.add('hidden');
+                        loadWallet();
+                    } else {
+                        alert(data.error || 'Failed to request payout');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert('Failed to request payout. Please try again.');
+                } finally {
+                    confirmPayout.disabled = false;
+                    confirmPayout.innerHTML = 'Confirm';
+                }
+            });
+
+            document.getElementById('refresh-balance-btn').addEventListener('click', () => {
+                loadWallet();
+            });
+            
+            // Initialize
+            verifyVendor();
+            updateLinksWithVendorId();
             loadWallet();
-        });
-        
-        loadWallet();
-        loadPayoutSettings();
+            loadPayoutSettings();
+            
+            window.logout = logout;
+        })();
     </script>
 </body>
 </html>

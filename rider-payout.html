@@ -47,6 +47,10 @@
                 <div class="bg-white/20 px-3 py-1.5 rounded-full text-xs">
                     <i class="fas fa-user mr-1"></i> <span id="rider-name">Rider</span>
                 </div>
+                <button onclick="logout()" class="bg-red-500/20 hover:bg-red-500/30 px-2 sm:px-3 py-1.5 rounded-full text-xs transition flex items-center gap-1">
+                    <i class="fas fa-sign-out-alt text-xs"></i>
+                    <span class="hidden sm:inline">Logout</span>
+                </button>
             </div>
         </div>
     </header>
@@ -121,165 +125,227 @@
     </footer>
 
     <script>
-        const API_BASE = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
-            ? 'http://localhost:3000'
-            : 'https://campusdash-backend.onrender.com';
-        
-        const urlParams = new URLSearchParams(window.location.search);
-        const RIDER_ID = urlParams.get('rider') || 1;
+        (function() {
+            const API_BASE = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
+                ? 'http://localhost:3000'
+                : 'https://campusdash-backend.onrender.com';
+            
+            // ========== AUTHENTICATION CHECK ==========
+            // Get rider ID from URL or localStorage
+            const urlParams = new URLSearchParams(window.location.search);
+            let RIDER_ID = urlParams.get('rider');
 
-        document.getElementById('rider-name').innerText = `Rider ${RIDER_ID}`;
+            // If no rider in URL, check localStorage
+            if (!RIDER_ID) {
+                RIDER_ID = localStorage.getItem('riderId');
+            }
 
-        async function loadWallet() {
-            try {
-                const res = await fetch(`${API_BASE}/api/riders/${RIDER_ID}/wallet`);
-                const data = await res.json();
-                
-                const balance = parseFloat(data.wallet?.balance || 0).toFixed(2);
-                const totalEarned = parseFloat(data.wallet?.total_earned || 0).toFixed(2);
-                
-                document.getElementById('wallet-balance').innerText = `₵${balance}`;
-                document.getElementById('total-earned').innerText = `₵${totalEarned}`;
-                
-                if (data.rider && data.rider.mobile_money_number) {
-                    document.getElementById('mobile-money').value = data.rider.mobile_money_number;
+            // If still no rider, redirect to login
+            if (!RIDER_ID) {
+                window.location.href = 'rider-login.html';
+            }
+
+            // Get rider name from localStorage or set default
+            let RIDER_NAME = localStorage.getItem('riderName') || `Rider ${RIDER_ID}`;
+
+            // Verify rider exists on backend
+            async function verifyRider() {
+                try {
+                    const res = await fetch(`${API_BASE}/api/riders/${RIDER_ID}/verify`);
+                    if (!res.ok) {
+                        localStorage.removeItem('riderId');
+                        localStorage.removeItem('riderName');
+                        localStorage.removeItem('riderPhone');
+                        window.location.href = 'rider-login.html';
+                    } else {
+                        const data = await res.json();
+                        if (data.name && data.name !== RIDER_NAME) {
+                            RIDER_NAME = data.name;
+                            localStorage.setItem('riderName', data.name);
+                        }
+                        document.getElementById('rider-name').innerText = RIDER_NAME;
+                    }
+                } catch (err) {
+                    console.error('Verification failed:', err);
                 }
-                
-                renderTransactions(data.transactions || []);
-            } catch (err) {
-                console.error('Error loading wallet:', err);
-                document.getElementById('transactions-container').innerHTML = '<div class="p-6 text-center text-gray-400 text-sm">Failed to load transactions</div>';
             }
-        }
 
-        function renderTransactions(transactions) {
-            const container = document.getElementById('transactions-container');
-            if (!transactions || transactions.length === 0) {
-                container.innerHTML = '<div class="p-6 text-center text-gray-400 text-sm">No transactions yet</div>';
-                return;
+            // Logout function
+            function logout() {
+                localStorage.removeItem('riderId');
+                localStorage.removeItem('riderName');
+                localStorage.removeItem('riderPhone');
+                window.location.href = 'rider-login.html';
             }
-            
-            container.innerHTML = transactions.map(t => `
-                <div class="transaction-item p-4 flex sm:flex-row flex-col justify-between items-start sm:items-center gap-2">
-                    <div class="flex-1">
-                        <div class="font-medium text-gray-800 text-sm">
-                            ${t.type === 'earning' ? '💰 Delivery Earning' : '💸 Payout'}
-                        </div>
-                        <div class="text-xs text-gray-400 mt-0.5">${new Date(t.created_at).toLocaleString()}</div>
-                        <div class="text-xs text-gray-400 mt-1">${t.description || ''}</div>
-                    </div>
-                    <div class="transaction-amount text-right sm:text-left">
-                        <div class="font-bold ${t.amount > 0 ? 'text-green-600' : 'text-red-600'} text-sm">
-                            ${t.amount > 0 ? '+' : ''}₵${Math.abs(t.amount).toFixed(2)}
-                        </div>
-                        <div class="text-xs text-gray-400">${t.status || 'completed'}</div>
-                    </div>
-                </div>
-            `).join('');
-        }
 
-        // Save payment settings
-        const saveBtn = document.getElementById('save-settings');
-        saveBtn.addEventListener('click', async () => {
-            const mobileMoney = document.getElementById('mobile-money').value;
-            if (!mobileMoney) {
-                alert('Please enter your mobile money number');
-                return;
-            }
-            
-            const originalText = saveBtn.innerHTML;
-            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Saving...';
-            saveBtn.disabled = true;
-            
-            try {
-                const res = await fetch(`${API_BASE}/api/riders/${RIDER_ID}/payment-settings`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ mobile_money_number: mobileMoney })
+            // Update all links to include rider ID
+            function updateLinksWithRiderId() {
+                const links = document.querySelectorAll('a[href="rider.html"]');
+                links.forEach(link => {
+                    link.href = `${link.getAttribute('href')}?rider=${RIDER_ID}`;
                 });
-                if (res.ok) {
-                    alert('✅ Payment settings saved successfully!');
-                } else {
-                    throw new Error('Save failed');
-                }
-            } catch (err) {
-                console.error(err);
-                alert('Failed to save settings. Please try again.');
-            } finally {
-                saveBtn.innerHTML = originalText;
-                saveBtn.disabled = false;
             }
-        });
 
-        // Request payout modal
-        const modal = document.getElementById('payout-modal');
-        const requestBtn = document.getElementById('request-payout-btn');
-        const cancelPayout = document.getElementById('cancel-payout');
-        const confirmPayout = document.getElementById('confirm-payout');
-        const payoutAmount = document.getElementById('payout-amount');
-        
-        requestBtn.addEventListener('click', () => {
-            payoutAmount.value = '';
-            modal.classList.remove('hidden');
-        });
-        
-        cancelPayout.addEventListener('click', () => {
-            modal.classList.add('hidden');
-        });
-        
-        // Close modal when clicking outside
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
+            // ========== EXISTING CODE CONTINUES ==========
+            // Display rider name
+            document.getElementById('rider-name').innerText = RIDER_NAME;
+
+            async function loadWallet() {
+                try {
+                    const res = await fetch(`${API_BASE}/api/riders/${RIDER_ID}/wallet`);
+                    const data = await res.json();
+                    
+                    const balance = parseFloat(data.wallet?.balance || 0).toFixed(2);
+                    const totalEarned = parseFloat(data.wallet?.total_earned || 0).toFixed(2);
+                    
+                    document.getElementById('wallet-balance').innerText = `₵${balance}`;
+                    document.getElementById('total-earned').innerText = `₵${totalEarned}`;
+                    
+                    if (data.rider && data.rider.mobile_money_number) {
+                        document.getElementById('mobile-money').value = data.rider.mobile_money_number;
+                    }
+                    
+                    renderTransactions(data.transactions || []);
+                } catch (err) {
+                    console.error('Error loading wallet:', err);
+                    document.getElementById('transactions-container').innerHTML = '<div class="p-6 text-center text-gray-400 text-sm">Failed to load transactions</div>';
+                }
+            }
+
+            function renderTransactions(transactions) {
+                const container = document.getElementById('transactions-container');
+                if (!transactions || transactions.length === 0) {
+                    container.innerHTML = '<div class="p-6 text-center text-gray-400 text-sm">No transactions yet</div>';
+                    return;
+                }
+                
+                container.innerHTML = transactions.map(t => `
+                    <div class="transaction-item p-4 flex sm:flex-row flex-col justify-between items-start sm:items-center gap-2">
+                        <div class="flex-1">
+                            <div class="font-medium text-gray-800 text-sm">
+                                ${t.type === 'earning' ? '💰 Delivery Earning' : '💸 Payout'}
+                            </div>
+                            <div class="text-xs text-gray-400 mt-0.5">${new Date(t.created_at).toLocaleString()}</div>
+                            <div class="text-xs text-gray-400 mt-1">${t.description || ''}</div>
+                        </div>
+                        <div class="transaction-amount text-right sm:text-left">
+                            <div class="font-bold ${t.amount > 0 ? 'text-green-600' : 'text-red-600'} text-sm">
+                                ${t.amount > 0 ? '+' : ''}₵${Math.abs(t.amount).toFixed(2)}
+                            </div>
+                            <div class="text-xs text-gray-400">${t.status || 'completed'}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // Save payment settings
+            const saveBtn = document.getElementById('save-settings');
+            saveBtn.addEventListener('click', async () => {
+                const mobileMoney = document.getElementById('mobile-money').value;
+                if (!mobileMoney) {
+                    alert('Please enter your mobile money number');
+                    return;
+                }
+                
+                const originalText = saveBtn.innerHTML;
+                saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Saving...';
+                saveBtn.disabled = true;
+                
+                try {
+                    const res = await fetch(`${API_BASE}/api/riders/${RIDER_ID}/payment-settings`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ mobile_money_number: mobileMoney })
+                    });
+                    if (res.ok) {
+                        alert('✅ Payment settings saved successfully!');
+                    } else {
+                        throw new Error('Save failed');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert('Failed to save settings. Please try again.');
+                } finally {
+                    saveBtn.innerHTML = originalText;
+                    saveBtn.disabled = false;
+                }
+            });
+
+            // Request payout modal
+            const modal = document.getElementById('payout-modal');
+            const requestBtn = document.getElementById('request-payout-btn');
+            const cancelPayout = document.getElementById('cancel-payout');
+            const confirmPayout = document.getElementById('confirm-payout');
+            const payoutAmount = document.getElementById('payout-amount');
+            
+            requestBtn.addEventListener('click', () => {
+                payoutAmount.value = '';
+                modal.classList.remove('hidden');
+            });
+            
+            cancelPayout.addEventListener('click', () => {
                 modal.classList.add('hidden');
-            }
-        });
-        
-        confirmPayout.addEventListener('click', async () => {
-            const amount = parseFloat(payoutAmount.value);
+            });
             
-            if (isNaN(amount) || amount < 50) {
-                alert('Please enter a valid amount (minimum ₵50)');
-                return;
-            }
-            
-            const currentBalance = parseFloat(document.getElementById('wallet-balance').innerText.replace('₵', ''));
-            if (amount > currentBalance) {
-                alert(`Insufficient balance. Your current balance is ₵${currentBalance.toFixed(2)}`);
-                return;
-            }
-            
-            confirmPayout.disabled = true;
-            confirmPayout.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Processing...';
-            
-            try {
-                const res = await fetch(`${API_BASE}/api/riders/${RIDER_ID}/request-payout`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ amount })
-                });
-                
-                const data = await res.json();
-                if (res.ok) {
-                    alert(`✅ Payout request submitted! Amount: ₵${amount.toFixed(2)}`);
+            // Close modal when clicking outside
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
                     modal.classList.add('hidden');
-                    loadWallet();
-                } else {
-                    alert(data.error || 'Failed to request payout');
                 }
-            } catch (err) {
-                console.error(err);
-                alert('Failed to request payout. Please try again.');
-            } finally {
-                confirmPayout.disabled = false;
-                confirmPayout.innerHTML = 'Confirm';
-            }
-        });
+            });
+            
+            confirmPayout.addEventListener('click', async () => {
+                const amount = parseFloat(payoutAmount.value);
+                
+                if (isNaN(amount) || amount < 50) {
+                    alert('Please enter a valid amount (minimum ₵50)');
+                    return;
+                }
+                
+                const currentBalance = parseFloat(document.getElementById('wallet-balance').innerText.replace('₵', ''));
+                if (amount > currentBalance) {
+                    alert(`Insufficient balance. Your current balance is ₵${currentBalance.toFixed(2)}`);
+                    return;
+                }
+                
+                confirmPayout.disabled = true;
+                confirmPayout.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Processing...';
+                
+                try {
+                    const res = await fetch(`${API_BASE}/api/riders/${RIDER_ID}/request-payout`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ amount })
+                    });
+                    
+                    const data = await res.json();
+                    if (res.ok) {
+                        alert(`✅ Payout request submitted! Amount: ₵${amount.toFixed(2)}`);
+                        modal.classList.add('hidden');
+                        loadWallet();
+                    } else {
+                        alert(data.error || 'Failed to request payout');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert('Failed to request payout. Please try again.');
+                } finally {
+                    confirmPayout.disabled = false;
+                    confirmPayout.innerHTML = 'Confirm';
+                }
+            });
 
-        document.getElementById('refresh-balance-btn').addEventListener('click', () => {
+            document.getElementById('refresh-balance-btn').addEventListener('click', () => {
+                loadWallet();
+            });
+            
+            // Initialize
+            verifyRider();
+            updateLinksWithRiderId();
             loadWallet();
-        });
-        
-        loadWallet();
+            
+            window.logout = logout;
+        })();
     </script>
 </body>
 </html>
