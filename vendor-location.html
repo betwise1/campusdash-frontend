@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>CampusDash | Set Pickup Location</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        #map { height: 350px; width: 100%; border-radius: 12px; margin-top: 16px; }
+        @media (min-width: 640px) { #map { height: 400px; } }
+        .custom-marker { background: none; border: none; }
+        button:active { transform: scale(0.98); transition: transform 0.1s ease; }
+        @media (max-width: 640px) {
+            .main-card { padding: 1rem !important; }
+            .main-card h2 { font-size: 1.125rem !important; }
+            .main-card p { font-size: 0.7rem !important; }
+            .info-banner { padding: 0.75rem !important; }
+            .info-banner span { font-size: 0.7rem !important; }
+            .search-input { padding: 0.5rem 0.75rem !important; font-size: 0.8rem !important; }
+            .location-footer { flex-direction: column !important; align-items: flex-start !important; gap: 0.75rem !important; }
+            .save-btn { width: 100%; justify-content: center; }
+            .selected-address-text { font-size: 0.8rem !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans antialiased">
+
+    <!-- Header -->
+    <header class="bg-emerald-600 text-white shadow-md sticky top-0 z-10">
+        <div class="container mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-2">
+            <div class="flex items-center gap-3">
+                <div class="bg-white/20 p-2 rounded-xl">
+                    <i class="fas fa-map-marker-alt text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg sm:text-xl font-bold">Set Pickup Location</h1>
+                    <p class="text-[10px] sm:text-xs text-emerald-100">Where customers can pick up orders</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <a href="vendor.html?vendor=1" class="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-full text-xs transition flex items-center gap-1">
+                    <i class="fas fa-arrow-left text-xs"></i>
+                    <span class="hidden sm:inline">Back to Dashboard</span>
+                </a>
+                <div class="bg-white/20 px-3 py-1.5 rounded-full text-xs">
+                    <i class="fas fa-building mr-1"></i> <span id="vendor-name">Vendor</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-6 max-w-4xl">
+        <div class="main-card bg-white rounded-xl shadow-sm p-5 sm:p-6">
+            <div class="mb-5 sm:mb-6">
+                <h2 class="text-base sm:text-xl font-bold text-gray-800">Your Pickup Location</h2>
+                <p class="text-gray-500 text-xs sm:text-sm mt-1">Click on the map to set where riders should pick up orders from your business.</p>
+            </div>
+
+            <div class="info-banner bg-amber-50 border-l-4 border-amber-500 p-3 sm:p-4 mb-4 rounded">
+                <div class="flex items-start gap-2">
+                    <i class="fas fa-info-circle text-amber-600 text-sm mt-0.5"></i>
+                    <span class="text-xs sm:text-sm text-amber-800">This location will be shown to riders when they accept orders from your business.</span>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Search for your location</label>
+                <div class="relative">
+                    <input type="text" id="search-input" 
+                        class="search-input w-full border border-gray-200 rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 pr-8 sm:pr-10 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition" 
+                        placeholder="Search for your shop address...">
+                    <div id="search-suggestions" class="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg mt-1 max-h-48 overflow-y-auto z-10 hidden shadow-lg"></div>
+                </div>
+            </div>
+
+            <div id="map"></div>
+
+            <div class="location-footer mt-4 p-3 sm:p-4 bg-gray-50 rounded-lg">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div class="flex-1">
+                        <p class="text-xs sm:text-sm text-gray-600"><i class="fas fa-location-dot text-emerald-600 mr-1"></i> Selected location:</p>
+                        <p id="selected-address" class="selected-address-text text-xs sm:text-sm font-medium text-gray-800 mt-0.5 sm:mt-1 break-words">No location selected</p>
+                        <p id="selected-coords" class="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1"></p>
+                    </div>
+                    <button id="save-location" class="save-btn bg-emerald-600 hover:bg-emerald-700 text-white px-4 sm:px-6 py-2 rounded-lg transition font-semibold text-xs sm:text-sm flex items-center justify-center gap-2">
+                        <i class="fas fa-save text-xs"></i> Save Pickup Location
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-white border-t mt-8 sm:mt-10 py-4 text-center text-gray-400 text-[10px] sm:text-xs">
+        <p>© 2025 CampusDash – Set your pickup location so riders can find you</p>
+    </footer>
+
+    <script>
+        (function() {
+            const API_BASE = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
+                ? 'http://localhost:3000'
+                : 'https://campusdash-backend.onrender.com';
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const VENDOR_ID = urlParams.get('vendor') || 1;
+            
+            let map;
+            let marker;
+            let currentLat = null;
+            let currentLng = null;
+            let currentAddress = '';
+            let searchTimeout;
+
+            document.getElementById('vendor-name').innerText = `Vendor ${VENDOR_ID}`;
+
+            // Initialize map
+            function initMap(lat = 5.603717, lng = -0.186964) {
+                if (map) {
+                    map.remove();
+                }
+                
+                map = L.map('map').setView([lat, lng], 16);
+                L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                    maxZoom: 19
+                }).addTo(map);
+                L.control.zoom({ position: 'topright' }).addTo(map);
+
+                // Add click handler
+                map.on('click', async (e) => {
+                    const { lat, lng } = e.latlng;
+                    updateMarker(lat, lng);
+                    
+                    // Reverse geocode to get address
+                    try {
+                        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+                        const data = await res.json();
+                        if (data.display_name) {
+                            currentAddress = data.display_name;
+                            document.getElementById('selected-address').innerHTML = `<i class="fas fa-building mr-1"></i> ${data.display_name.substring(0, 100)}${data.display_name.length > 100 ? '...' : ''}`;
+                        }
+                    } catch (err) {
+                        console.error('Reverse geocode error:', err);
+                        currentAddress = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                        document.getElementById('selected-address').innerHTML = `<i class="fas fa-map-marker-alt mr-1"></i> ${currentAddress}`;
+                    }
+                });
+            }
+
+            function updateMarker(lat, lng) {
+                currentLat = lat;
+                currentLng = lng;
+                if (marker) marker.remove();
+                
+                const customIcon = L.divIcon({
+                    html: '<div style="background-color: #10b981; color: white; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"><i class="fas fa-store"></i></div>',
+                    className: 'custom-marker',
+                    iconSize: [36, 36],
+                    popupAnchor: [0, -18]
+                });
+                
+                marker = L.marker([lat, lng], { icon: customIcon })
+                    .addTo(map)
+                    .bindPopup('<strong>Your Pickup Location</strong><br>Riders will pick up orders here')
+                    .openPopup();
+                
+                document.getElementById('selected-coords').innerHTML = `Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`;
+                map.setView([lat, lng], 16);
+            }
+
+            // Search functionality
+            async function searchLocation(query) {
+                if (query.length < 3) {
+                    document.getElementById('search-suggestions').style.display = 'none';
+                    return;
+                }
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query + ', Ghana')}&format=json&limit=5&countrycodes=gh`);
+                    const data = await res.json();
+                    const suggestionsDiv = document.getElementById('search-suggestions');
+                    if (data.length) {
+                        suggestionsDiv.innerHTML = data.map(place => `
+                            <div onclick="window.selectLocation(${place.lat}, ${place.lon}, '${place.display_name.replace(/'/g, "\\'")}')" 
+                                 class="p-2 hover:bg-emerald-50 cursor-pointer border-b border-gray-100 text-sm">
+                                <i class="fas fa-map-marker-alt text-emerald-600 mr-2"></i>
+                                ${place.display_name.substring(0, 70)}${place.display_name.length > 70 ? '...' : ''}
+                            </div>
+                        `).join('');
+                        suggestionsDiv.style.display = 'block';
+                    } else {
+                        suggestionsDiv.style.display = 'none';
+                    }
+                } catch(e) {
+                    console.error(e);
+                    document.getElementById('search-suggestions').style.display = 'none';
+                }
+            }
+
+            window.selectLocation = function(lat, lng, address) {
+                updateMarker(lat, lng);
+                currentAddress = address;
+                document.getElementById('selected-address').innerHTML = `<i class="fas fa-building mr-1"></i> ${address.substring(0, 100)}${address.length > 100 ? '...' : ''}`;
+                document.getElementById('search-input').value = address;
+                document.getElementById('search-suggestions').style.display = 'none';
+            };
+
+            // Save location to backend
+            async function saveLocation() {
+                if (!currentLat || !currentLng) {
+                    alert('Please click on the map to select your pickup location first.');
+                    return;
+                }
+
+                const saveBtn = document.getElementById('save-location');
+                const originalText = saveBtn.innerHTML;
+                saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Saving...';
+                saveBtn.disabled = true;
+
+                try {
+                    const res = await fetch(`${API_BASE}/api/vendors/${VENDOR_ID}/location`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            latitude: currentLat,
+                            longitude: currentLng,
+                            location_name: currentAddress
+                        })
+                    });
+                    
+                    if (!res.ok) throw new Error('Failed to save');
+                    
+                    alert('✅ Pickup location saved successfully! Riders will now see this location.');
+                } catch (err) {
+                    console.error(err);
+                    alert('Failed to save location. Please try again.');
+                } finally {
+                    saveBtn.innerHTML = originalText;
+                    saveBtn.disabled = false;
+                }
+            }
+
+            // Load existing vendor location
+            async function loadExistingLocation() {
+                try {
+                    const res = await fetch(`${API_BASE}/api/vendors/${VENDOR_ID}/location`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.latitude && data.longitude) {
+                            currentLat = parseFloat(data.latitude);
+                            currentLng = parseFloat(data.longitude);
+                            currentAddress = data.location || '';
+                            initMap(currentLat, currentLng);
+                            updateMarker(currentLat, currentLng);
+                            document.getElementById('selected-address').innerHTML = `<i class="fas fa-building mr-1"></i> ${data.location || 'Your shop location'}`;
+                            document.getElementById('search-input').value = data.location || '';
+                        } else {
+                            initMap();
+                        }
+                    } else {
+                        initMap();
+                    }
+                } catch (err) {
+                    console.error('Error loading existing location:', err);
+                    initMap();
+                }
+            }
+
+            // Event listeners
+            const searchInput = document.getElementById('search-input');
+            searchInput.addEventListener('input', (e) => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => searchLocation(e.target.value), 500);
+            });
+            
+            document.addEventListener('click', (e) => {
+                if (!searchInput.contains(e.target) && !document.getElementById('search-suggestions').contains(e.target)) {
+                    document.getElementById('search-suggestions').style.display = 'none';
+                }
+            });
+            
+            document.getElementById('save-location').addEventListener('click', saveLocation);
+            
+            // Initialize
+            loadExistingLocation();
+        })();
+    </script>
+</body>
+</html>

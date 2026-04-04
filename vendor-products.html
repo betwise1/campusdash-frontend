@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>CampusDash | Product Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        .modal-transition { transition: opacity 0.2s ease; }
+        button:active { transform: scale(0.98); transition: transform 0.1s ease; }
+        .image-preview { 
+            width: 80px; 
+            height: 80px; 
+            object-fit: cover; 
+            border-radius: 8px; 
+            margin-top: 8px;
+            border: 2px solid #e5e7eb;
+        }
+        .product-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .product-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+        }
+        .upload-area {
+            border: 2px dashed #d1d5db;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .upload-area:hover {
+            border-color: #10b981;
+            background-color: #f0fdf4;
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        @media (max-width: 640px) {
+            .stats-card { padding: 0.75rem !important; }
+            .stats-card .text-2xl { font-size: 1.25rem !important; }
+            .stats-card i { font-size: 1rem !important; }
+            .filter-buttons { flex-wrap: wrap; gap: 0.5rem; }
+            .filter-btn { padding: 0.4rem 0.8rem !important; font-size: 0.7rem !important; }
+            .add-product-btn { padding: 0.5rem 0.75rem !important; font-size: 0.7rem !important; }
+            .product-card img { height: 140px !important; }
+            .product-card .text-lg { font-size: 0.9rem !important; }
+            .product-card .text-xl { font-size: 1rem !important; }
+            .modal-content { margin: 1rem; padding: 1rem !important; }
+            .modal-buttons { flex-direction: column; gap: 0.5rem; }
+            .modal-buttons button { width: 100%; }
+        }
+        @media (max-width: 480px) {
+            .product-card .absolute.top-2.right-2 { top: 0.5rem; right: 0.5rem; }
+            .product-card .p-4 { padding: 0.75rem; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans antialiased">
+
+    <!-- Header -->
+    <header class="bg-emerald-600 text-white shadow-md sticky top-0 z-10">
+        <div class="container mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-2">
+            <div class="flex items-center gap-3">
+                <div class="bg-white/20 p-2 rounded-xl">
+                    <i class="fas fa-utensils text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg sm:text-xl font-bold">Product Manager</h1>
+                    <p class="text-[10px] sm:text-xs text-emerald-100">Manage your menu items</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <a href="vendor.html?vendor=1" class="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-full text-xs transition flex items-center gap-1">
+                    <i class="fas fa-arrow-left text-xs"></i>
+                    <span class="hidden sm:inline">Orders</span>
+                </a>
+                <div class="bg-white/20 px-3 py-1.5 rounded-full text-xs">
+                    <i class="fas fa-building mr-1"></i> <span id="vendor-name">Vendor</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-6 max-w-7xl">
+        <!-- Stats Cards - Responsive Grid -->
+        <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+            <div class="stats-card bg-white rounded-xl shadow-sm p-3 sm:p-4 border-l-4 border-green-500">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-[10px] sm:text-sm text-gray-500">Total Products</p>
+                        <p class="text-lg sm:text-2xl font-bold" id="total-products">0</p>
+                    </div>
+                    <i class="fas fa-boxes text-green-500 text-base sm:text-2xl"></i>
+                </div>
+            </div>
+            <div class="stats-card bg-white rounded-xl shadow-sm p-3 sm:p-4 border-l-4 border-blue-500">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-[10px] sm:text-sm text-gray-500">Available</p>
+                        <p class="text-lg sm:text-2xl font-bold" id="available-products">0</p>
+                    </div>
+                    <i class="fas fa-check-circle text-blue-500 text-base sm:text-2xl"></i>
+                </div>
+            </div>
+            <div class="stats-card bg-white rounded-xl shadow-sm p-3 sm:p-4 border-l-4 border-yellow-500">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-[10px] sm:text-sm text-gray-500">Unavailable</p>
+                        <p class="text-lg sm:text-2xl font-bold" id="unavailable-products">0</p>
+                    </div>
+                    <i class="fas fa-ban text-yellow-500 text-base sm:text-2xl"></i>
+                </div>
+            </div>
+            <div class="stats-card bg-white rounded-xl shadow-sm p-3 sm:p-4 border-l-4 border-purple-500">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-[10px] sm:text-sm text-gray-500">Avg. Price</p>
+                        <p class="text-lg sm:text-2xl font-bold" id="avg-price">₵0</p>
+                    </div>
+                    <i class="fas fa-chart-line text-purple-500 text-base sm:text-2xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div class="p-4 sm:p-5 border-b flex flex-wrap justify-between items-center gap-3">
+                <div>
+                    <h2 class="text-base sm:text-xl font-bold text-gray-800">Your Menu Items</h2>
+                    <p class="text-gray-500 text-xs sm:text-sm mt-0.5 sm:mt-1">Add, edit, or remove products – images make them irresistible!</p>
+                </div>
+                <button id="add-product-btn" class="add-product-btn bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white font-semibold px-3 sm:px-5 py-1.5 sm:py-2 rounded-lg shadow-md transition flex items-center gap-2 text-xs sm:text-sm">
+                    <i class="fas fa-plus-circle text-xs sm:text-sm"></i>
+                    <span class="hidden sm:inline">Add Product</span>
+                </button>
+            </div>
+            
+            <!-- Filter Buttons - Responsive -->
+            <div class="filter-buttons px-4 sm:px-5 pt-3 pb-2 border-b flex flex-wrap gap-1.5 sm:gap-2">
+                <button id="filter-all" class="filter-btn bg-emerald-600 text-white px-2 sm:px-4 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-sm transition flex items-center gap-1 sm:gap-2">
+                    <i class="fas fa-list text-xs"></i> All
+                </button>
+                <button id="filter-available" class="filter-btn bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 sm:px-4 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-sm transition flex items-center gap-1 sm:gap-2">
+                    <i class="fas fa-check-circle text-xs"></i> Available
+                </button>
+                <button id="filter-unavailable" class="filter-btn bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 sm:px-4 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-sm transition flex items-center gap-1 sm:gap-2">
+                    <i class="fas fa-ban text-xs"></i> Unavailable
+                </button>
+            </div>
+
+            <div id="products-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 p-4 sm:p-5">
+                <div class="col-span-full text-center py-12 text-gray-400">
+                    <i class="fas fa-spinner fa-spin text-2xl sm:text-3xl mb-3 block"></i>
+                    <p class="text-sm">Loading your products...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Add/Edit Modal - Responsive -->
+    <div id="product-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-3 sm:p-4 z-50 hidden modal-transition">
+        <div class="modal-content bg-white rounded-xl max-w-md w-full max-h-[85vh] overflow-y-auto shadow-xl">
+            <div class="sticky top-0 bg-white border-b p-4 sm:p-5 flex justify-between items-center">
+                <div>
+                    <h3 id="modal-title" class="text-base sm:text-xl font-bold text-gray-800">Add Product</h3>
+                    <p class="text-xs text-gray-500 mt-0.5">Fill in the details below</p>
+                </div>
+                <button id="close-modal" class="text-gray-400 hover:text-gray-600 text-xl sm:text-2xl">&times;</button>
+            </div>
+            <form id="product-form" class="p-4 sm:p-5 space-y-3 sm:space-y-4">
+                <input type="hidden" id="product-id" value="">
+                
+                <div>
+                    <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Product Name *</label>
+                    <input type="text" id="product-name" required 
+                           class="w-full border border-gray-200 rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition">
+                </div>
+                
+                <div>
+                    <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Price (GHS) *</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">₵</span>
+                        <input type="number" id="product-price" step="0.01" required 
+                               class="w-full border border-gray-200 rounded-lg pl-7 sm:pl-8 pr-3 sm:pr-4 py-2 sm:py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition">
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Emoji Icon (optional)</label>
+                    <input type="text" id="product-icon" placeholder="e.g., 🍛" maxlength="2" 
+                           class="w-full border border-gray-200 rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition">
+                </div>
+                
+                <div>
+                    <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Product Image</label>
+                    <div class="upload-area rounded-lg p-3 sm:p-4 text-center cursor-pointer" id="upload-area">
+                        <input type="file" id="product-image" accept="image/*" class="hidden">
+                        <i class="fas fa-cloud-upload-alt text-2xl sm:text-3xl text-gray-400 mb-1 sm:mb-2"></i>
+                        <p class="text-xs text-gray-500">Click or drag to upload image</p>
+                        <p class="text-[10px] text-gray-400 mt-1">PNG, JPG up to 2MB</p>
+                    </div>
+                    <div class="mt-2 flex justify-center">
+                        <img id="image-preview" class="image-preview hidden">
+                    </div>
+                    <input type="hidden" id="product-image-url" value="">
+                </div>
+                
+                <div class="flex items-center justify-between p-2 sm:p-3 bg-gray-50 rounded-lg">
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" id="product-available" class="mr-2 w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500" checked>
+                        <span class="text-xs sm:text-sm text-gray-700 font-medium">Available for customers</span>
+                    </label>
+                    <i class="fas fa-eye text-gray-400 text-xs sm:text-sm"></i>
+                </div>
+                
+                <div class="modal-buttons flex gap-2 sm:gap-3 pt-2">
+                    <button type="submit" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 sm:py-2.5 rounded-lg transition flex items-center justify-center gap-2 text-sm">
+                        <i class="fas fa-save text-xs"></i> Save Product
+                    </button>
+                    <button type="button" id="cancel-modal" class="px-4 sm:px-6 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2 sm:py-2.5 rounded-lg transition text-sm">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <footer class="bg-white border-t mt-8 sm:mt-10 py-4 text-center text-gray-400 text-[10px] sm:text-xs">
+        <p>© 2025 CampusDash – Product Manager</p>
+    </footer>
+
+    <script>
+        (function() {
+            const API_BASE = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
+                ? 'http://localhost:3000'
+                : 'https://campusdash-backend.onrender.com';
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const VENDOR_ID = urlParams.get('vendor') || 1;
+            let products = [];
+            let currentFilter = 'all';
+
+            const productsContainer = document.getElementById('products-container');
+            const addBtn = document.getElementById('add-product-btn');
+            const modal = document.getElementById('product-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const productForm = document.getElementById('product-form');
+            const productIdField = document.getElementById('product-id');
+            const productName = document.getElementById('product-name');
+            const productPrice = document.getElementById('product-price');
+            const productIcon = document.getElementById('product-icon');
+            const productAvailable = document.getElementById('product-available');
+            const productImageInput = document.getElementById('product-image');
+            const productImageUrlField = document.getElementById('product-image-url');
+            const imagePreview = document.getElementById('image-preview');
+            const closeModalBtn = document.getElementById('close-modal');
+            const cancelModalBtn = document.getElementById('cancel-modal');
+            const uploadArea = document.getElementById('upload-area');
+
+            const totalProductsEl = document.getElementById('total-products');
+            const availableProductsEl = document.getElementById('available-products');
+            const unavailableProductsEl = document.getElementById('unavailable-products');
+            const avgPriceEl = document.getElementById('avg-price');
+
+            async function loadProducts() {
+                productsContainer.innerHTML = `<div class="col-span-full text-center py-12 text-gray-400"><i class="fas fa-spinner fa-spin text-2xl mb-3 block"></i><p class="text-sm">Loading your products...</p></div>`;
+                try {
+                    const res = await fetch(`${API_BASE}/api/vendors/${VENDOR_ID}/products`);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    products = await res.json();
+                    updateStats();
+                    renderProducts();
+                } catch (err) {
+                    console.error('Load error:', err);
+                    productsContainer.innerHTML = `<div class="col-span-full text-center py-12 text-red-500">
+                        <i class="fas fa-exclamation-triangle text-2xl mb-3 block"></i>
+                        <p class="text-sm">Failed to load products.</p>
+                        <button onclick="window.loadProducts()" class="mt-2 text-emerald-600 underline text-sm">Retry</button>
+                    </div>`;
+                }
+            }
+
+            function updateStats() {
+                const total = products.length;
+                const available = products.filter(p => p.available).length;
+                const unavailable = total - available;
+                const avgPrice = total > 0 ? products.reduce((sum, p) => sum + Number(p.price), 0) / total : 0;
+                
+                totalProductsEl.innerText = total;
+                availableProductsEl.innerText = available;
+                unavailableProductsEl.innerText = unavailable;
+                avgPriceEl.innerText = `₵${avgPrice.toFixed(2)}`;
+            }
+
+            function renderProducts() {
+                let filteredProducts = products;
+                if (currentFilter === 'available') {
+                    filteredProducts = products.filter(p => p.available);
+                } else if (currentFilter === 'unavailable') {
+                    filteredProducts = products.filter(p => !p.available);
+                }
+                
+                if (!filteredProducts.length) {
+                    let message = '';
+                    if (currentFilter === 'available') message = 'No available products.';
+                    else if (currentFilter === 'unavailable') message = 'No unavailable products.';
+                    else message = 'No products yet. Click "Add Product" to get started.';
+                    
+                    productsContainer.innerHTML = `<div class="col-span-full text-center py-12 text-gray-400">
+                        <i class="fas fa-box-open text-3xl mb-3 block"></i>
+                        <p class="text-sm">${message}</p>
+                    </div>`;
+                    return;
+                }
+                
+                const html = filteredProducts.map(p => `
+                    <div class="bg-white rounded-xl shadow-md overflow-hidden product-card border ${p.available ? 'border-gray-200' : 'border-red-200'} transition">
+                        <div class="relative group">
+                            <img src="${p.image_url || 'https://placehold.co/400x300?text=No+Image'}" 
+                                 alt="${escapeHtml(p.name)}" 
+                                 class="w-full h-32 sm:h-40 object-cover group-hover:scale-105 transition duration-300">
+                            <div class="absolute top-1 right-1 sm:top-2 sm:right-2 flex gap-0.5 sm:gap-1 opacity-0 group-hover:opacity-100 transition">
+                                <button onclick="window.editProduct(${p.id})" class="bg-white rounded-full p-1 sm:p-2 shadow-lg hover:bg-gray-100 transition">
+                                    <i class="fas fa-edit text-blue-600 text-[10px] sm:text-sm"></i>
+                                </button>
+                                <button onclick="window.deleteProduct(${p.id})" class="bg-white rounded-full p-1 sm:p-2 shadow-lg hover:bg-gray-100 transition">
+                                    <i class="fas fa-trash-alt text-red-600 text-[10px] sm:text-sm"></i>
+                                </button>
+                            </div>
+                            ${!p.available ? '<div class="absolute top-1 left-1 sm:top-2 sm:left-2 bg-red-500 text-white text-[8px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full">Unavailable</div>' : ''}
+                        </div>
+                        <div class="p-2.5 sm:p-4">
+                            <div class="flex justify-between items-start mb-1 sm:mb-2">
+                                <div>
+                                    <h3 class="font-bold text-gray-800 text-xs sm:text-lg">${escapeHtml(p.name)}</h3>
+                                    <div class="flex items-center gap-0.5 sm:gap-1 mt-0.5 sm:mt-1">
+                                        <span class="text-sm sm:text-2xl">${p.icon || '🍽️'}</span>
+                                        <span class="text-emerald-600 font-bold text-sm sm:text-xl">₵${Number(p.price).toFixed(2)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-2 sm:mt-3 flex justify-between items-center">
+                                <div class="flex items-center gap-0.5 sm:gap-1">
+                                    <i class="fas ${p.available ? 'fa-check-circle text-green-500' : 'fa-ban text-red-500'} text-[10px] sm:text-sm"></i>
+                                    <span class="text-[9px] sm:text-xs text-gray-500">${p.available ? 'Available' : 'Unavailable'}</span>
+                                </div>
+                                <button onclick="window.toggleAvailability(${p.id}, ${!p.available})" 
+                                        class="text-[9px] sm:text-xs ${p.available ? 'text-yellow-600 hover:text-yellow-700' : 'text-emerald-600 hover:text-emerald-700'} font-medium transition">
+                                    ${p.available ? 'Mark Unavailable' : 'Mark Available'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+                productsContainer.innerHTML = html;
+            }
+
+            function setupImageUpload() {
+                uploadArea.addEventListener('click', () => productImageInput.click());
+                uploadArea.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    uploadArea.classList.add('border-emerald-500', 'bg-emerald-50');
+                });
+                uploadArea.addEventListener('dragleave', () => {
+                    uploadArea.classList.remove('border-emerald-500', 'bg-emerald-50');
+                });
+                uploadArea.addEventListener('drop', async (e) => {
+                    e.preventDefault();
+                    uploadArea.classList.remove('border-emerald-500', 'bg-emerald-50');
+                    const file = e.dataTransfer.files[0];
+                    if (file && file.type.startsWith('image/')) {
+                        await uploadImage(file);
+                    } else {
+                        alert('Please drop an image file.');
+                    }
+                });
+                productImageInput.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    if (file) await uploadImage(file);
+                });
+            }
+
+            async function uploadImage(file) {
+                if (file.size > 2 * 1024 * 1024) {
+                    alert('Image size must be less than 2MB.');
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    imagePreview.src = e.target.result;
+                    imagePreview.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+                
+                const formData = new FormData();
+                formData.append('image', file);
+                try {
+                    const res = await fetch(`${API_BASE}/api/upload`, { method: 'POST', body: formData });
+                    const data = await res.json();
+                    if (res.ok) {
+                        productImageUrlField.value = data.url;
+                    } else {
+                        throw new Error(data.error);
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert('Image upload failed. Please try again.');
+                    productImageInput.value = '';
+                    imagePreview.classList.add('hidden');
+                }
+            }
+
+            function openModal(product = null) {
+                if (product) {
+                    modalTitle.innerText = 'Edit Product';
+                    productIdField.value = product.id;
+                    productName.value = product.name;
+                    productPrice.value = product.price;
+                    productIcon.value = product.icon || '';
+                    productAvailable.checked = product.available;
+                    productImageUrlField.value = product.image_url || '';
+                    if (product.image_url) {
+                        imagePreview.src = product.image_url;
+                        imagePreview.classList.remove('hidden');
+                    } else {
+                        imagePreview.classList.add('hidden');
+                    }
+                } else {
+                    modalTitle.innerText = 'Add New Product';
+                    productIdField.value = '';
+                    productName.value = '';
+                    productPrice.value = '';
+                    productIcon.value = '';
+                    productAvailable.checked = true;
+                    productImageUrlField.value = '';
+                    productImageInput.value = '';
+                    imagePreview.classList.add('hidden');
+                }
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeModalFunc() {
+                modal.classList.add('hidden');
+                document.body.style.overflow = 'auto';
+                productImageInput.value = '';
+            }
+
+            async function saveProduct(event) {
+                event.preventDefault();
+                const id = productIdField.value;
+                const productData = {
+                    name: productName.value.trim(),
+                    price: parseFloat(productPrice.value),
+                    icon: productIcon.value.trim() || '📦',
+                    available: productAvailable.checked,
+                    image_url: productImageUrlField.value || null
+                };
+                if (!productData.name || isNaN(productData.price)) {
+                    alert('Please fill in name and price.');
+                    return;
+                }
+                
+                const saveBtn = event.submitter;
+                const originalText = saveBtn.innerHTML;
+                saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+                saveBtn.disabled = true;
+                
+                try {
+                    let url, method;
+                    if (id) {
+                        url = `${API_BASE}/api/products/${id}`;
+                        method = 'PUT';
+                    } else {
+                        url = `${API_BASE}/api/vendors/${VENDOR_ID}/products`;
+                        method = 'POST';
+                    }
+                    const res = await fetch(url, { 
+                        method, 
+                        headers: { 'Content-Type': 'application/json' }, 
+                        body: JSON.stringify(productData) 
+                    });
+                    if (!res.ok) {
+                        const error = await res.text();
+                        throw new Error(error);
+                    }
+                    closeModalFunc();
+                    loadProducts();
+                } catch (err) {
+                    console.error(err);
+                    alert('Error saving product. Please try again.');
+                } finally {
+                    saveBtn.innerHTML = originalText;
+                    saveBtn.disabled = false;
+                }
+            }
+
+            window.editProduct = function(id) {
+                const product = products.find(p => p.id === id);
+                if (product) openModal(product);
+            };
+            
+            window.deleteProduct = async function(id) {
+                if (!confirm('Delete this product permanently? This action cannot be undone.')) return;
+                try {
+                    const res = await fetch(`${API_BASE}/api/products/${id}`, { method: 'DELETE' });
+                    const data = await res.json();
+                    if (!res.ok) {
+                        throw new Error(data.error || 'Delete failed');
+                    }
+                    await loadProducts();
+                    alert('Product deleted successfully!');
+                } catch (err) {
+                    console.error(err);
+                    alert('Delete failed: ' + err.message);
+                }
+            };
+            
+            window.toggleAvailability = async function(id, newAvailability) {
+                try {
+                    const res = await fetch(`${API_BASE}/api/products/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ available: newAvailability })
+                    });
+                    if (!res.ok) throw new Error();
+                    await loadProducts();
+                } catch (err) {
+                    console.error(err);
+                    alert('Update failed. Please try again.');
+                }
+            };
+
+            window.loadProducts = loadProducts;
+
+            function setFilter(filter) {
+                currentFilter = filter;
+                renderProducts();
+                
+                const filterAll = document.getElementById('filter-all');
+                const filterAvailable = document.getElementById('filter-available');
+                const filterUnavailable = document.getElementById('filter-unavailable');
+                
+                filterAll.classList.remove('bg-emerald-600', 'text-white');
+                filterAvailable.classList.remove('bg-emerald-600', 'text-white');
+                filterUnavailable.classList.remove('bg-emerald-600', 'text-white');
+                filterAll.classList.add('bg-gray-100', 'text-gray-700');
+                filterAvailable.classList.add('bg-gray-100', 'text-gray-700');
+                filterUnavailable.classList.add('bg-gray-100', 'text-gray-700');
+                
+                if (filter === 'all') {
+                    filterAll.classList.remove('bg-gray-100', 'text-gray-700');
+                    filterAll.classList.add('bg-emerald-600', 'text-white');
+                } else if (filter === 'available') {
+                    filterAvailable.classList.remove('bg-gray-100', 'text-gray-700');
+                    filterAvailable.classList.add('bg-emerald-600', 'text-white');
+                } else if (filter === 'unavailable') {
+                    filterUnavailable.classList.remove('bg-gray-100', 'text-gray-700');
+                    filterUnavailable.classList.add('bg-emerald-600', 'text-white');
+                }
+            }
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                return str.replace(/[&<>]/g, function(m) {
+                    if (m === '&') return '&amp;';
+                    if (m === '<') return '&lt;';
+                    if (m === '>') return '&gt;';
+                    return m;
+                });
+            }
+
+            document.getElementById('vendor-name').innerText = `Vendor ${VENDOR_ID}`;
+            document.getElementById('filter-all').addEventListener('click', () => setFilter('all'));
+            document.getElementById('filter-available').addEventListener('click', () => setFilter('available'));
+            document.getElementById('filter-unavailable').addEventListener('click', () => setFilter('unavailable'));
+            addBtn.addEventListener('click', () => openModal());
+            closeModalBtn.addEventListener('click', closeModalFunc);
+            cancelModalBtn.addEventListener('click', closeModalFunc);
+            productForm.addEventListener('submit', saveProduct);
+            
+            setupImageUpload();
+            loadProducts();
+        })();
+    </script>
+</body>
+</html>

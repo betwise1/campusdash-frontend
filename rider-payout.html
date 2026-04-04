@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>CampusDash | Rider Earnings</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        button:active { transform: scale(0.98); transition: transform 0.1s ease; }
+        @media (max-width: 640px) {
+            .earnings-card { padding: 1rem !important; }
+            .earnings-card .text-4xl { font-size: 1.75rem !important; }
+            .earnings-buttons { flex-direction: column; gap: 0.5rem !important; }
+            .earnings-buttons button { width: 100%; justify-content: center; }
+            .settings-card { padding: 1rem !important; }
+            .settings-card h2 { font-size: 1.125rem !important; }
+            .transaction-item { flex-direction: column !important; align-items: flex-start !important; gap: 0.5rem !important; }
+            .transaction-amount { text-align: left !important; }
+            .modal-content { margin: 1rem; padding: 1rem !important; }
+            .modal-buttons { flex-direction: column; gap: 0.5rem; }
+            .modal-buttons button { width: 100%; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans antialiased">
+
+    <!-- Header -->
+    <header class="bg-emerald-600 text-white shadow-md sticky top-0 z-10">
+        <div class="container mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-2">
+            <div class="flex items-center gap-3">
+                <div class="bg-white/20 p-2 rounded-xl">
+                    <i class="fas fa-motorcycle text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg sm:text-xl font-bold">Rider Earnings</h1>
+                    <p class="text-[10px] sm:text-xs text-emerald-100">Track your deliveries & earnings</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <a href="rider.html" class="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-full text-xs transition flex items-center gap-1">
+                    <i class="fas fa-arrow-left text-xs"></i>
+                    <span class="hidden sm:inline">Dashboard</span>
+                </a>
+                <div class="bg-white/20 px-3 py-1.5 rounded-full text-xs">
+                    <i class="fas fa-user mr-1"></i> <span id="rider-name">Rider</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-6 max-w-4xl">
+        <!-- Earnings Card -->
+        <div class="earnings-card bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow-lg p-5 sm:p-6 mb-6 text-white">
+            <div class="flex flex-wrap justify-between items-start gap-3">
+                <div>
+                    <p class="text-xs sm:text-sm opacity-90">Available Balance</p>
+                    <p class="text-2xl sm:text-4xl font-bold mt-1" id="wallet-balance">₵0.00</p>
+                    <p class="text-xs opacity-90 mt-2">Total Earned: <span id="total-earned">₵0.00</span></p>
+                </div>
+                <div class="bg-white/20 rounded-full p-2 sm:p-3">
+                    <i class="fas fa-money-bill-wave text-xl sm:text-2xl"></i>
+                </div>
+            </div>
+            <div class="earnings-buttons mt-4 flex flex-wrap gap-2 sm:gap-3">
+                <button id="request-payout-btn" class="bg-white text-blue-700 hover:bg-gray-100 px-4 py-2 rounded-lg transition font-semibold text-sm flex items-center justify-center gap-2">
+                    <i class="fas fa-money-bill-wave"></i> Request Payout
+                </button>
+                <button id="refresh-balance-btn" class="bg-blue-700 hover:bg-blue-800 text-white px-3 py-2 rounded-lg transition">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Payment Settings -->
+        <div class="settings-card bg-white rounded-xl shadow-sm p-5 sm:p-6 mb-6">
+            <h2 class="text-lg sm:text-xl font-bold text-gray-800 mb-4">Payment Settings</h2>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Mobile Money Number</label>
+                <input type="tel" id="mobile-money" placeholder="e.g., 0241234567" 
+                    class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                <p class="text-xs text-gray-400 mt-1">Payouts will be sent to this number</p>
+            </div>
+            <button id="save-settings" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg transition font-semibold text-sm flex items-center justify-center gap-2 w-full sm:w-auto">
+                <i class="fas fa-save"></i> Save Settings
+            </button>
+        </div>
+
+        <!-- Recent Transactions -->
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div class="p-4 sm:p-5 border-b">
+                <h2 class="text-lg sm:text-xl font-bold text-gray-800">Recent Earnings</h2>
+            </div>
+            <div id="transactions-container" class="divide-y divide-gray-100">
+                <div class="p-6 text-center text-gray-400 text-sm">Loading transactions...</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Request Payout Modal -->
+    <div id="payout-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="modal-content bg-white rounded-xl max-w-md w-full p-5 sm:p-6 shadow-xl">
+            <h3 class="text-lg sm:text-xl font-bold text-gray-800 mb-4">Request Payout</h3>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Amount (GHS)</label>
+                <input type="number" id="payout-amount" step="0.01" min="50" 
+                    class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <p class="text-xs text-gray-500 mt-1">Minimum payout: ₵50</p>
+            </div>
+            <div class="modal-buttons flex gap-3">
+                <button id="confirm-payout" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg transition text-sm font-medium">Confirm</button>
+                <button id="cancel-payout" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-lg transition text-sm font-medium">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-white border-t mt-10 py-4 text-center text-gray-400 text-xs">
+        <p>© 2025 CampusDash – Rider Earnings Portal</p>
+    </footer>
+
+    <script>
+        const API_BASE = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
+            ? 'http://localhost:3000'
+            : 'https://campusdash-backend.onrender.com';
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const RIDER_ID = urlParams.get('rider') || 1;
+
+        document.getElementById('rider-name').innerText = `Rider ${RIDER_ID}`;
+
+        async function loadWallet() {
+            try {
+                const res = await fetch(`${API_BASE}/api/riders/${RIDER_ID}/wallet`);
+                const data = await res.json();
+                
+                const balance = parseFloat(data.wallet?.balance || 0).toFixed(2);
+                const totalEarned = parseFloat(data.wallet?.total_earned || 0).toFixed(2);
+                
+                document.getElementById('wallet-balance').innerText = `₵${balance}`;
+                document.getElementById('total-earned').innerText = `₵${totalEarned}`;
+                
+                if (data.rider && data.rider.mobile_money_number) {
+                    document.getElementById('mobile-money').value = data.rider.mobile_money_number;
+                }
+                
+                renderTransactions(data.transactions || []);
+            } catch (err) {
+                console.error('Error loading wallet:', err);
+                document.getElementById('transactions-container').innerHTML = '<div class="p-6 text-center text-gray-400 text-sm">Failed to load transactions</div>';
+            }
+        }
+
+        function renderTransactions(transactions) {
+            const container = document.getElementById('transactions-container');
+            if (!transactions || transactions.length === 0) {
+                container.innerHTML = '<div class="p-6 text-center text-gray-400 text-sm">No transactions yet</div>';
+                return;
+            }
+            
+            container.innerHTML = transactions.map(t => `
+                <div class="transaction-item p-4 flex sm:flex-row flex-col justify-between items-start sm:items-center gap-2">
+                    <div class="flex-1">
+                        <div class="font-medium text-gray-800 text-sm">
+                            ${t.type === 'earning' ? '💰 Delivery Earning' : '💸 Payout'}
+                        </div>
+                        <div class="text-xs text-gray-400 mt-0.5">${new Date(t.created_at).toLocaleString()}</div>
+                        <div class="text-xs text-gray-400 mt-1">${t.description || ''}</div>
+                    </div>
+                    <div class="transaction-amount text-right sm:text-left">
+                        <div class="font-bold ${t.amount > 0 ? 'text-green-600' : 'text-red-600'} text-sm">
+                            ${t.amount > 0 ? '+' : ''}₵${Math.abs(t.amount).toFixed(2)}
+                        </div>
+                        <div class="text-xs text-gray-400">${t.status || 'completed'}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Save payment settings
+        const saveBtn = document.getElementById('save-settings');
+        saveBtn.addEventListener('click', async () => {
+            const mobileMoney = document.getElementById('mobile-money').value;
+            if (!mobileMoney) {
+                alert('Please enter your mobile money number');
+                return;
+            }
+            
+            const originalText = saveBtn.innerHTML;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Saving...';
+            saveBtn.disabled = true;
+            
+            try {
+                const res = await fetch(`${API_BASE}/api/riders/${RIDER_ID}/payment-settings`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mobile_money_number: mobileMoney })
+                });
+                if (res.ok) {
+                    alert('✅ Payment settings saved successfully!');
+                } else {
+                    throw new Error('Save failed');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Failed to save settings. Please try again.');
+            } finally {
+                saveBtn.innerHTML = originalText;
+                saveBtn.disabled = false;
+            }
+        });
+
+        // Request payout modal
+        const modal = document.getElementById('payout-modal');
+        const requestBtn = document.getElementById('request-payout-btn');
+        const cancelPayout = document.getElementById('cancel-payout');
+        const confirmPayout = document.getElementById('confirm-payout');
+        const payoutAmount = document.getElementById('payout-amount');
+        
+        requestBtn.addEventListener('click', () => {
+            payoutAmount.value = '';
+            modal.classList.remove('hidden');
+        });
+        
+        cancelPayout.addEventListener('click', () => {
+            modal.classList.add('hidden');
+        });
+        
+        // Close modal when clicking outside
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+            }
+        });
+        
+        confirmPayout.addEventListener('click', async () => {
+            const amount = parseFloat(payoutAmount.value);
+            
+            if (isNaN(amount) || amount < 50) {
+                alert('Please enter a valid amount (minimum ₵50)');
+                return;
+            }
+            
+            const currentBalance = parseFloat(document.getElementById('wallet-balance').innerText.replace('₵', ''));
+            if (amount > currentBalance) {
+                alert(`Insufficient balance. Your current balance is ₵${currentBalance.toFixed(2)}`);
+                return;
+            }
+            
+            confirmPayout.disabled = true;
+            confirmPayout.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Processing...';
+            
+            try {
+                const res = await fetch(`${API_BASE}/api/riders/${RIDER_ID}/request-payout`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount })
+                });
+                
+                const data = await res.json();
+                if (res.ok) {
+                    alert(`✅ Payout request submitted! Amount: ₵${amount.toFixed(2)}`);
+                    modal.classList.add('hidden');
+                    loadWallet();
+                } else {
+                    alert(data.error || 'Failed to request payout');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Failed to request payout. Please try again.');
+            } finally {
+                confirmPayout.disabled = false;
+                confirmPayout.innerHTML = 'Confirm';
+            }
+        });
+
+        document.getElementById('refresh-balance-btn').addEventListener('click', () => {
+            loadWallet();
+        });
+        
+        loadWallet();
+    </script>
+</body>
+</html>

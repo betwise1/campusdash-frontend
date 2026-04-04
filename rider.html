@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>CampusDash | Rider Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        .modal-transition { transition: opacity 0.2s ease; }
+        button:active { transform: scale(0.97); transition: transform 0.1s ease; }
+        .order-card { transition: all 0.2s ease; }
+        .order-card:hover { transform: translateY(-2px); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+        .stat-card { transition: all 0.2s ease; cursor: pointer; }
+        .stat-card:hover { transform: translateY(-4px); }
+        #map { height: 400px; width: 100%; border-radius: 24px; }
+        .search-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+        }
+        .search-suggestions div {
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid #f3f4f6;
+            font-size: 13px;
+        }
+        .search-suggestions div:hover { background-color: #f0fdf4; }
+        .search-container { position: relative; }
+        @media (max-width: 640px) {
+            .stat-card { padding: 12px; }
+            .stat-card p.text-2xl { font-size: 1.25rem; }
+            .order-card .flex { flex-direction: column; }
+            .order-card .items-end { align-items: flex-start; margin-top: 12px; }
+        }
+        .status-badge { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+        .status-ready { background-color: #fef3c7; color: #b45309; }
+        .status-picked { background-color: #dbeafe; color: #1e40af; }
+        .status-delivered { background-color: #e2e3e5; color: #374151; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 via-white to-gray-50 font-sans antialiased">
+
+    <!-- Mobile-Responsive Header -->
+    <header class="bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 text-white shadow-xl sticky top-0 z-20">
+        <div class="container mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-2">
+            <div class="flex items-center space-x-2 sm:space-x-3">
+                <div class="bg-white/20 backdrop-blur-sm p-2 sm:p-2.5 rounded-xl">
+                    <i class="fas fa-motorcycle text-xl sm:text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg sm:text-xl font-extrabold tracking-tight">Rider Portal</h1>
+                    <p class="text-[10px] sm:text-xs text-emerald-100">Deliver & earn</p>
+                </div>
+            </div>
+            <div class="flex gap-2 sm:gap-3">
+                <a href="rider-payout.html?rider=1" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm transition flex items-center gap-1 sm:gap-2">
+                    <i class="fas fa-wallet text-xs sm:text-sm"></i>
+                    <span class="hidden sm:inline">Earnings</span>
+                </a>
+                <div class="bg-white/20 backdrop-blur-sm px-2 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm">
+                    <i class="fas fa-user mr-1"></i> <span id="rider-name">Rider</span>
+                </div>
+                <div class="bg-white/20 backdrop-blur-sm px-2 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm">
+                    <i class="fas fa-cedi-sign mr-1"></i> <span id="today-earnings">₵0</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-4 sm:py-6 max-w-7xl">
+        <!-- Stats Cards - Responsive Grid -->
+        <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+            <div class="stat-card bg-white rounded-xl sm:rounded-2xl shadow-sm p-3 sm:p-4 border-l-4 border-yellow-500">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-[10px] sm:text-xs text-gray-500">Ready</p>
+                        <p class="text-lg sm:text-2xl font-bold" id="ready-count">0</p>
+                    </div>
+                    <i class="fas fa-hourglass-half text-yellow-500 text-base sm:text-2xl"></i>
+                </div>
+            </div>
+            <div class="stat-card bg-white rounded-xl sm:rounded-2xl shadow-sm p-3 sm:p-4 border-l-4 border-blue-500">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-[10px] sm:text-xs text-gray-500">Active</p>
+                        <p class="text-lg sm:text-2xl font-bold" id="active-count">0</p>
+                    </div>
+                    <i class="fas fa-truck text-blue-500 text-base sm:text-2xl"></i>
+                </div>
+            </div>
+            <div class="stat-card bg-white rounded-xl sm:rounded-2xl shadow-sm p-3 sm:p-4 border-l-4 border-green-500">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-[10px] sm:text-xs text-gray-500">Completed</p>
+                        <p class="text-lg sm:text-2xl font-bold" id="completed-count">0</p>
+                    </div>
+                    <i class="fas fa-check-circle text-green-500 text-base sm:text-2xl"></i>
+                </div>
+            </div>
+            <div class="stat-card bg-white rounded-xl sm:rounded-2xl shadow-sm p-3 sm:p-4 border-l-4 border-purple-500">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-[10px] sm:text-xs text-gray-500">Earnings</p>
+                        <p class="text-lg sm:text-2xl font-bold text-green-700" id="earnings-total">₵0</p>
+                    </div>
+                    <i class="fas fa-cedi-sign text-purple-500 text-base sm:text-2xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls Section - Responsive -->
+        <div class="bg-white rounded-xl sm:rounded-2xl shadow-sm p-4 sm:p-5 mb-6 flex flex-wrap justify-between items-center gap-3">
+            <div>
+                <h2 class="text-base sm:text-xl font-semibold text-gray-800">Pickup & Deliveries</h2>
+                <p class="text-xs sm:text-sm text-gray-600">View orders ready for pickup and manage deliveries</p>
+            </div>
+            <div class="flex gap-2">
+                <button id="refresh-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition flex items-center gap-1 sm:gap-2">
+                    <i class="fas fa-sync-alt text-xs sm:text-sm"></i> <span class="hidden sm:inline">Refresh</span>
+                </button>
+                <button id="toggle-online-btn" class="bg-green-100 hover:bg-green-200 text-green-700 text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition flex items-center gap-1 sm:gap-2">
+                    <i class="fas fa-circle text-green-500 text-[8px] sm:text-xs"></i> <span class="hidden sm:inline">Online</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Two Column Layout - Responsive -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Ready Orders Column -->
+            <div>
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-base sm:text-lg font-semibold flex items-center gap-2">
+                        <i class="fas fa-hourglass-half text-yellow-600"></i> 
+                        Ready for Pickup
+                    </h3>
+                    <span id="ready-badge" class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">0</span>
+                </div>
+                <div id="ready-orders" class="space-y-3 max-h-[500px] overflow-y-auto">
+                    <div class="text-center py-8">
+                        <div class="inline-flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-full">
+                            <i class="fas fa-spinner fa-spin text-emerald-500"></i>
+                            <span class="text-sm text-gray-500">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- My Deliveries Column -->
+            <div>
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-base sm:text-lg font-semibold flex items-center gap-2">
+                        <i class="fas fa-truck text-blue-600"></i> 
+                        My Deliveries
+                    </h3>
+                    <span id="active-badge" class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">0</span>
+                </div>
+                <div id="my-orders" class="space-y-3 max-h-[500px] overflow-y-auto">
+                    <div class="text-center py-8">
+                        <div class="inline-flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-full">
+                            <i class="fas fa-spinner fa-spin text-emerald-500"></i>
+                            <span class="text-sm text-gray-500">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Location Map Modal -->
+    <div id="location-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-2 sm:p-4 modal-transition">
+        <div class="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl mx-2 sm:mx-0">
+            <div class="p-3 sm:p-5 border-b flex justify-between items-center bg-gradient-to-r from-gray-50 to-white">
+                <div>
+                    <h3 class="text-base sm:text-xl font-bold text-gray-800 flex items-center gap-2">
+                        <i class="fas fa-route text-emerald-500"></i> Route Map
+                    </h3>
+                    <p class="text-xs text-gray-500 mt-1 hidden sm:block">Pickup → Delivery route</p>
+                </div>
+                <button id="close-map-modal" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            </div>
+            <div class="p-3 sm:p-4 border-b bg-white">
+                <div class="search-container">
+                    <input type="text" id="location-search" class="w-full border border-gray-200 rounded-xl px-3 sm:px-4 py-2 sm:py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Search for location...">
+                    <div id="search-suggestions" class="search-suggestions"></div>
+                </div>
+            </div>
+            <div id="map" class="w-full h-64 sm:h-96"></div>
+            <div class="p-3 sm:p-5 border-t bg-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div id="location-address" class="text-xs sm:text-sm text-gray-600"></div>
+                <button id="open-directions" class="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-5 py-2 rounded-xl text-sm transition w-full sm:w-auto flex items-center justify-center gap-2">
+                    <i class="fas fa-directions"></i> Get Directions
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-white border-t mt-8 py-4 text-center text-gray-500 text-xs sm:text-sm">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-center gap-4 sm:gap-6 mb-2">
+                <i class="fas fa-motorcycle text-emerald-500 text-sm sm:text-base"></i>
+                <i class="fas fa-clock text-emerald-500 text-sm sm:text-base"></i>
+                <i class="fas fa-shield-alt text-emerald-500 text-sm sm:text-base"></i>
+            </div>
+            <p>© 2025 CampusDash – Rider Portal</p>
+        </div>
+    </footer>
+
+    <script>
+        (function() {
+            const API_BASE = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
+                ? 'http://localhost:3000'
+                : 'https://campusdash-backend.onrender.com';
+            const RIDER_ID = 1;
+            const RIDER_NAME = 'Rider One';
+            const EARNING_PER_DELIVERY = 4;
+
+            let refreshInterval, isOnline = true, currentRouteOrder = null, searchTimeout;
+            let map = null, searchMarker = null;
+
+            // Load Rider Earnings
+            async function loadRiderEarnings() {
+                try {
+                    const res = await fetch(`${API_BASE}/api/riders/${RIDER_ID}/wallet`);
+                    const data = await res.json();
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    
+                    let todayEarnings = 0;
+                    let completedToday = 0;
+                    
+                    if (data.transactions && data.transactions.length > 0) {
+                        const todayTransactions = data.transactions.filter(t => {
+                            const tDate = new Date(t.created_at);
+                            tDate.setHours(0, 0, 0, 0);
+                            return tDate.getTime() === today.getTime() && t.type === 'earning' && t.amount > 0;
+                        });
+                        todayEarnings = todayTransactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+                        completedToday = todayTransactions.length;
+                    }
+                    
+                    const safeEarnings = Number(todayEarnings) || 0;
+                    const safeCompleted = Number(completedToday) || 0;
+                    
+                    document.getElementById('earnings-total').innerText = `₵${safeEarnings.toFixed(2)}`;
+                    document.getElementById('today-earnings').innerText = `₵${safeEarnings.toFixed(2)}`;
+                    document.getElementById('completed-count').innerText = safeCompleted;
+                } catch (e) {
+                    console.error('Error loading earnings:', e);
+                    document.getElementById('earnings-total').innerText = '₵0.00';
+                    document.getElementById('today-earnings').innerText = '₵0.00';
+                }
+            }
+
+            // Search Location
+            async function searchLocation(query) {
+                if (query.length < 3) { document.getElementById('search-suggestions').style.display = 'none'; return; }
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query + ', Ghana')}&format=json&limit=5&countrycodes=gh`);
+                    const data = await res.json();
+                    const suggestionsDiv = document.getElementById('search-suggestions');
+                    if (data.length) {
+                        suggestionsDiv.innerHTML = data.map(p => `<div onclick="window.flyToLocation(${p.lat}, ${p.lon}, '${p.display_name.replace(/'/g, "\\'")}')"><i class="fas fa-map-marker-alt text-green-600 mr-2"></i>${p.display_name.substring(0, 60)}</div>`).join('');
+                        suggestionsDiv.style.display = 'block';
+                    } else { suggestionsDiv.style.display = 'none'; }
+                } catch(e) { console.error(e); document.getElementById('search-suggestions').style.display = 'none'; }
+            }
+
+            window.flyToLocation = function(lat, lng, address) {
+                if (map) { map.flyTo([lat, lng], 16); if (searchMarker) searchMarker.remove(); searchMarker = L.marker([lat, lng], { icon: L.divIcon({ html: '<div style="background-color: #3b82f6; color: white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;"><i class="fas fa-search-location"></i></div>', className: 'custom-marker', iconSize: [32,32] }) }).addTo(map).bindPopup(`<strong>Searched:</strong><br>${address}`).openPopup(); }
+                document.getElementById('search-suggestions').style.display = 'none';
+                document.getElementById('location-search').value = address;
+            };
+
+            window.showLocationOnMap = function(order) {
+                const vLat = parseFloat(order.vendor_latitude);
+                const vLng = parseFloat(order.vendor_longitude);
+                const cLat = parseFloat(order.delivery_latitude);
+                const cLng = parseFloat(order.delivery_longitude);
+                
+                if (isNaN(vLat) || isNaN(vLng) || isNaN(cLat) || isNaN(cLng)) {
+                    alert('Location coordinates not available.');
+                    return;
+                }
+                
+                if (map) { map.remove(); map = null; }
+                
+                const centerLat = (vLat + cLat) / 2;
+                const centerLng = (vLng + cLng) / 2;
+                
+                map = L.map('map').setView([centerLat, centerLng], 14);
+                L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxZoom: 19 }).addTo(map);
+                L.control.zoom({ position: 'topright' }).addTo(map);
+                
+                const vendorIcon = L.divIcon({ html: '<div style="background-color: #f97316; color: white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;"><i class="fas fa-store"></i></div>', className: 'custom-marker', iconSize: [32,32] });
+                const customerIcon = L.divIcon({ html: '<div style="background-color: #ef4444; color: white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;"><i class="fas fa-location-dot"></i></div>', className: 'custom-marker', iconSize: [32,32] });
+                
+                L.marker([vLat, vLng], { icon: vendorIcon }).addTo(map).bindPopup(`<strong>Pickup:</strong> ${order.vendor_name}`);
+                L.marker([cLat, cLng], { icon: customerIcon }).addTo(map).bindPopup(`<strong>Delivery:</strong> ${order.customer_name}<br>${order.location}`);
+                L.polyline([[vLat, vLng], [cLat, cLng]], { color: '#10b981', weight: 3 }).addTo(map);
+                map.fitBounds(L.latLngBounds([vLat, vLng], [cLat, cLng]), { padding: [50, 50] });
+                
+                document.getElementById('location-address').innerHTML = `<div class="flex flex-col gap-1"><span>🏪 Pickup: ${order.vendor_name}</span><span>📍 Delivery: ${order.location}</span></div>`;
+                currentRouteOrder = { vendorLat: vLat, vendorLng: vLng, customerLat: cLat, customerLng: cLng };
+                document.getElementById('location-modal').classList.remove('hidden');
+                document.getElementById('location-search').value = '';
+                if (searchMarker) searchMarker.remove();
+            };
+
+            function closeMapModal() { document.getElementById('location-modal').classList.add('hidden'); if (searchMarker) searchMarker.remove(); document.getElementById('location-search').value = ''; document.getElementById('search-suggestions').style.display = 'none'; }
+            function openDirections() { if (currentRouteOrder) window.open(`https://www.google.com/maps/dir/${currentRouteOrder.vendorLat},${currentRouteOrder.vendorLng}/${currentRouteOrder.customerLat},${currentRouteOrder.customerLng}`, '_blank'); }
+
+            async function loadReadyOrders() {
+                try {
+                    const res = await fetch(`${API_BASE}/api/orders/ready`);
+                    const orders = await res.json();
+                    const container = document.getElementById('ready-orders');
+                    if (!orders.length) { 
+                        container.innerHTML = '<div class="bg-white rounded-xl p-6 text-center text-gray-500"><i class="fas fa-check-circle text-green-500 text-2xl mb-2 block"></i>No orders ready</div>'; 
+                    } else {
+                        container.innerHTML = orders.map(o => {
+                            const orderStr = JSON.stringify(o).replace(/'/g, "&#39;").replace(/\\/g, "\\\\");
+                            return `
+                                <div class="bg-white rounded-xl shadow-sm p-3 sm:p-4 border-l-4 border-yellow-500 order-card">
+                                    <div class="flex flex-col sm:flex-row justify-between gap-3">
+                                        <div class="flex-1">
+                                            <div class="font-bold text-base sm:text-lg">Order #${o.id}</div>
+                                            <div class="text-xs sm:text-sm text-gray-600 mt-1">${escapeHtml(o.customer_name)} (${o.customer_phone})</div>
+                                            <div class="text-xs sm:text-sm mt-1">📍 ${escapeHtml(o.location)}</div>
+                                            <div class="text-xs sm:text-sm">🏪 ${escapeHtml(o.vendor_name)}</div>
+                                            <div class="text-sm font-semibold text-green-700 mt-2">₵${Number(o.total).toFixed(2)}</div>
+                                        </div>
+                                        <div class="flex flex-row sm:flex-col gap-2">
+                                            <button onclick='window.showLocationOnMap(${orderStr})' class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1.5 rounded-full text-xs">View Route</button>
+                                            <button onclick="window.acceptOrder(${o.id})" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm">Accept & Pickup</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                    }
+                    document.getElementById('ready-count').innerText = orders.length;
+                    document.getElementById('ready-badge').innerText = orders.length;
+                } catch(e) { console.error(e); }
+            }
+
+            window.acceptOrder = async function(orderId) {
+                if (!isOnline) { alert('You are offline.'); return; }
+                try {
+                    await fetch(`${API_BASE}/api/orders/${orderId}/assign`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ riderId: RIDER_ID }) });
+                    await Promise.all([loadReadyOrders(), loadMyOrders()]);
+                } catch(e) { alert('Failed to accept order.'); }
+            };
+
+            async function loadMyOrders() {
+                try {
+                    const res = await fetch(`${API_BASE}/api/riders/${RIDER_ID}/orders`);
+                    const orders = await res.json();
+                    const container = document.getElementById('my-orders');
+                    if (!orders.length) { 
+                        container.innerHTML = '<div class="bg-white rounded-xl p-6 text-center text-gray-500"><i class="fas fa-motorcycle text-2xl mb-2 block"></i>No active deliveries</div>'; 
+                    } else {
+                        container.innerHTML = orders.map(o => {
+                            const orderStr = JSON.stringify(o).replace(/'/g, "&#39;").replace(/\\/g, "\\\\");
+                            return `
+                                <div class="bg-white rounded-xl shadow-sm p-3 sm:p-4 border-l-4 ${o.status === 'picked' ? 'border-blue-500' : 'border-gray-500'} order-card">
+                                    <div class="flex flex-col sm:flex-row justify-between gap-3">
+                                        <div class="flex-1">
+                                            <div class="font-bold text-base sm:text-lg">Order #${o.id}</div>
+                                            <div class="text-xs sm:text-sm text-gray-600 mt-1">${escapeHtml(o.customer_name)} (${o.customer_phone})</div>
+                                            <div class="text-xs sm:text-sm">📍 ${escapeHtml(o.location)}</div>
+                                            <div class="text-xs sm:text-sm">🏪 ${escapeHtml(o.vendor_name)}</div>
+                                            <div class="text-sm font-semibold text-green-700 mt-2">₵${Number(o.total).toFixed(2)}</div>
+                                            <div class="text-xs mt-1"><span class="status-badge ${o.status === 'picked' ? 'status-picked' : 'status-delivered'}">${o.status.toUpperCase()}</span></div>
+                                        </div>
+                                        <div class="flex flex-row sm:flex-col gap-2">
+                                            <button onclick='window.showLocationOnMap(${orderStr})' class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1.5 rounded-full text-xs">View Route</button>
+                                            ${o.status === 'picked' ? `<button onclick="window.deliverOrder(${o.id})" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm">Mark Delivered</button>` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                    }
+                    document.getElementById('active-count').innerText = orders.length;
+                    document.getElementById('active-badge').innerText = orders.length;
+                    await loadRiderEarnings();
+                } catch(e) { console.error(e); }
+            }
+
+            window.deliverOrder = async function(orderId) {
+                if (!confirm('Mark delivered? +₵4 earned')) return;
+                try {
+                    await fetch(`${API_BASE}/api/orders/${orderId}/deliver`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ riderId: RIDER_ID }) });
+                    await Promise.all([loadMyOrders(), loadReadyOrders(), loadRiderEarnings()]);
+                } catch(e) { alert('Failed to mark delivered.'); }
+            };
+
+            function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m])); }
+            function loadData() { loadReadyOrders(); loadMyOrders(); loadRiderEarnings(); }
+
+            document.getElementById('refresh-btn').addEventListener('click', loadData);
+            document.getElementById('close-map-modal').addEventListener('click', closeMapModal);
+            document.getElementById('open-directions').addEventListener('click', openDirections);
+            document.getElementById('location-modal').addEventListener('click', (e) => { if (e.target === document.getElementById('location-modal')) closeMapModal(); });
+            
+            const searchInput = document.getElementById('location-search');
+            searchInput.addEventListener('input', (e) => { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => searchLocation(e.target.value), 500); });
+            document.addEventListener('click', (e) => { if (!searchInput.contains(e.target) && !document.getElementById('search-suggestions').contains(e.target)) document.getElementById('search-suggestions').style.display = 'none'; });
+            
+            const toggleBtn = document.getElementById('toggle-online-btn');
+            toggleBtn.addEventListener('click', () => {
+                isOnline = !isOnline;
+                if (isOnline) {
+                    toggleBtn.innerHTML = '<i class="fas fa-circle text-green-500 text-xs"></i> <span class="hidden sm:inline">Online</span>';
+                    toggleBtn.classList.remove('bg-red-100','hover:bg-red-200','text-red-700');
+                    toggleBtn.classList.add('bg-green-100','hover:bg-green-200','text-green-700');
+                    loadReadyOrders();
+                } else {
+                    toggleBtn.innerHTML = '<i class="fas fa-circle text-gray-500 text-xs"></i> <span class="hidden sm:inline">Offline</span>';
+                    toggleBtn.classList.remove('bg-green-100','hover:bg-green-200','text-green-700');
+                    toggleBtn.classList.add('bg-gray-100','hover:bg-gray-200','text-gray-700');
+                }
+            });
+            
+            document.getElementById('rider-name').innerText = RIDER_NAME;
+            loadData();
+            refreshInterval = setInterval(() => { if (isOnline) loadData(); }, 20000);
+            
+            window.showLocationOnMap = window.showLocationOnMap;
+            window.acceptOrder = window.acceptOrder;
+            window.deliverOrder = window.deliverOrder;
+            window.flyToLocation = window.flyToLocation;
+        })();
+    </script>
+</body>
+</html>
