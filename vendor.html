@@ -247,50 +247,41 @@
             ? 'http://localhost:3000'
             : 'https://campusdash-backend.onrender.com';
 
-        // ========== AUTHENTICATION CHECK ==========
-        // Get vendor ID from URL or localStorage
-        const urlParams = new URLSearchParams(window.location.search);
-        let VENDOR_ID = urlParams.get('vendor');
+        // Replace the existing auth check with:
+const token = localStorage.getItem('vendorToken');
+const VENDOR_ID = localStorage.getItem('vendorId');
 
-        // If no vendor in URL, check localStorage
-        if (!VENDOR_ID) {
-            VENDOR_ID = localStorage.getItem('vendorId');
+if (!token || !VENDOR_ID) {
+    window.location.href = 'vendor-login.html';
+}
+
+// Add token to all API requests
+async function fetchWithAuth(url, options = {}) {
+    const token = localStorage.getItem('vendorToken');
+    return fetch(url, {
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            ...options.headers
         }
+    });
+}
 
-        // If still no vendor, redirect to login
-        if (!VENDOR_ID) {
+// Verify token on backend
+async function verifyAuth() {
+    try {
+        const res = await fetchWithAuth(`${API_BASE}/api/vendors/me`);
+        if (!res.ok) {
+            localStorage.removeItem('vendorToken');
+            localStorage.removeItem('vendorId');
+            localStorage.removeItem('vendorName');
             window.location.href = 'vendor-login.html';
         }
-
-        // Get vendor name from localStorage or set default
-        let VENDOR_NAME = localStorage.getItem('vendorName') || `Vendor ${VENDOR_ID}`;
-
-        // Verify vendor exists on backend
-        async function verifyVendor() {
-            try {
-                const res = await fetch(`${API_BASE}/api/vendors/${VENDOR_ID}/verify`);
-                if (!res.ok) {
-                    // Vendor not found, clear storage and redirect to login
-                    localStorage.removeItem('vendorId');
-                    localStorage.removeItem('vendorName');
-                    localStorage.removeItem('vendorPhone');
-                    window.location.href = 'vendor-login.html';
-                } else {
-                    const data = await res.json();
-                    // Update stored name if needed
-                    if (data.name && data.name !== VENDOR_NAME) {
-                        VENDOR_NAME = data.name;
-                        localStorage.setItem('vendorName', data.name);
-                    }
-                    // Update display
-                    document.getElementById('vendor-name').innerText = VENDOR_NAME;
-                }
-            } catch (err) {
-                console.error('Verification failed:', err);
-                // Don't redirect on network error - might be temporary
-            }
-        }
-
+    } catch (err) {
+        console.error('Auth verification failed:', err);
+    }
+}
         // Logout function
         function logout() {
             localStorage.removeItem('vendorId');

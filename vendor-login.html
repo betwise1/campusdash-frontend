@@ -23,19 +23,24 @@
             <p class="text-gray-500 text-sm mt-1">Login to manage your menu and orders</p>
         </div>
 
+        <div class="mb-4">
+            <div class="flex gap-2">
+                <button id="login-tab" class="flex-1 py-2 text-sm font-medium border-b-2 border-emerald-600 text-emerald-600">Login</button>
+                <button id="register-tab" class="flex-1 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">Register</button>
+            </div>
+        </div>
+
+        <!-- Login Form -->
         <form id="login-form" class="space-y-4">
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                <div class="relative">
-                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">+233</span>
-                    <input type="tel" id="phone" placeholder="24XXXXXXX" 
-                        class="w-full border border-gray-200 rounded-lg pl-16 pr-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
-                </div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                <input type="email" id="login-email" required 
+                    class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">PIN Code</label>
-                <input type="password" id="pin" placeholder="Enter 4-digit PIN" maxlength="4"
-                    class="w-full border border-gray-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <input type="password" id="login-password" required 
+                    class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
             </div>
             <button type="submit" 
                 class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2">
@@ -43,77 +48,183 @@
             </button>
         </form>
 
-        <div id="error-message" class="mt-4 text-center text-red-500 text-sm hidden"></div>
-
-        <div class="mt-6 pt-4 border-t text-center">
-            <p class="text-xs text-gray-400 mb-2">Demo Vendors:</p>
-            <div class="grid grid-cols-2 gap-2 text-xs">
-                <div class="bg-gray-50 p-2 rounded">
-                    <div class="font-medium">Campus Cafeteria</div>
-                    <div class="text-gray-500">0241111111 / 1111</div>
-                </div>
-                <div class="bg-gray-50 p-2 rounded">
-                    <div class="font-medium">Student Snack Bar</div>
-                    <div class="text-gray-500">0242222222 / 2222</div>
-                </div>
-                <div class="bg-gray-50 p-2 rounded">
-                    <div class="font-medium">Night Canteen</div>
-                    <div class="text-gray-500">0243333333 / 3333</div>
-                </div>
+        <!-- Register Form -->
+        <form id="register-form" class="space-y-4 hidden">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Business Name</label>
+                <input type="text" id="register-name" required 
+                    class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
             </div>
-        </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                <input type="email" id="register-email" required 
+                    class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                <input type="tel" id="register-phone" placeholder="024XXXXXXX" required 
+                    class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <input type="password" id="register-password" required 
+                    class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+                <input type="password" id="register-confirm-password" required 
+                    class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                <input type="text" id="register-location" placeholder="Your business address" 
+                    class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+            </div>
+            <button type="submit" 
+                class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2">
+                <i class="fas fa-user-plus"></i> Register
+            </button>
+        </form>
+
+        <div id="error-message" class="mt-4 text-center text-red-500 text-sm hidden"></div>
+        <div id="success-message" class="mt-4 text-center text-green-600 text-sm hidden"></div>
     </div>
 
     <script>
         const API_BASE = 'https://campusdash-backend.onrender.com';
-
+        
+        // Tab switching
+        const loginTab = document.getElementById('login-tab');
+        const registerTab = document.getElementById('register-tab');
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        
+        loginTab.addEventListener('click', () => {
+            loginTab.classList.add('border-emerald-600', 'text-emerald-600');
+            loginTab.classList.remove('border-transparent', 'text-gray-500');
+            registerTab.classList.remove('border-emerald-600', 'text-emerald-600');
+            registerTab.classList.add('border-transparent', 'text-gray-500');
+            loginForm.classList.remove('hidden');
+            registerForm.classList.add('hidden');
+            document.getElementById('error-message').classList.add('hidden');
+            document.getElementById('success-message').classList.add('hidden');
+        });
+        
+        registerTab.addEventListener('click', () => {
+            registerTab.classList.add('border-emerald-600', 'text-emerald-600');
+            registerTab.classList.remove('border-transparent', 'text-gray-500');
+            loginTab.classList.remove('border-emerald-600', 'text-emerald-600');
+            loginTab.classList.add('border-transparent', 'text-gray-500');
+            registerForm.classList.remove('hidden');
+            loginForm.classList.add('hidden');
+            document.getElementById('error-message').classList.add('hidden');
+            document.getElementById('success-message').classList.add('hidden');
+        });
+        
+        // Login
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            let phone = document.getElementById('phone').value.trim();
-            const pin = document.getElementById('pin').value.trim();
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value;
             const errorDiv = document.getElementById('error-message');
-
-            // Format phone number
-            if (phone && !phone.startsWith('0') && phone.length === 9) {
-                phone = '0' + phone;
-            }
-
-            if (!phone || !pin) {
-                errorDiv.textContent = 'Please enter phone number and PIN';
-                errorDiv.classList.remove('hidden');
-                return;
-            }
-
-            if (pin.length !== 4) {
-                errorDiv.textContent = 'PIN must be 4 digits';
-                errorDiv.classList.remove('hidden');
-                return;
-            }
-
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            
             errorDiv.classList.add('hidden');
             
-            const submitBtn = e.target.querySelector('button[type="submit"]');
+            if (!email || !password) {
+                errorDiv.textContent = 'Please enter email and password';
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+            
             const originalText = submitBtn.innerHTML;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
             submitBtn.disabled = true;
-
+            
             try {
                 const res = await fetch(`${API_BASE}/api/vendors/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone, pin })
+                    body: JSON.stringify({ email, password })
                 });
-
+                
                 const data = await res.json();
-
+                
                 if (res.ok) {
+                    localStorage.setItem('vendorToken', data.token);
                     localStorage.setItem('vendorId', data.vendor.id);
                     localStorage.setItem('vendorName', data.vendor.name);
-                    localStorage.setItem('vendorPhone', data.vendor.phone);
                     window.location.href = `vendor.html?vendor=${data.vendor.id}`;
                 } else {
-                    errorDiv.textContent = data.error || 'Invalid credentials';
+                    errorDiv.textContent = data.error || 'Login failed';
+                    errorDiv.classList.remove('hidden');
+                }
+            } catch (err) {
+                errorDiv.textContent = 'Network error. Please try again.';
+                errorDiv.classList.remove('hidden');
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+        
+        // Register
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('register-name').value.trim();
+            const email = document.getElementById('register-email').value.trim();
+            const phone = document.getElementById('register-phone').value.trim();
+            const password = document.getElementById('register-password').value;
+            const confirmPassword = document.getElementById('register-confirm-password').value;
+            const location = document.getElementById('register-location').value.trim();
+            const errorDiv = document.getElementById('error-message');
+            const successDiv = document.getElementById('success-message');
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            
+            errorDiv.classList.add('hidden');
+            successDiv.classList.add('hidden');
+            
+            if (!name || !email || !phone || !password) {
+                errorDiv.textContent = 'Please fill in all required fields';
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+            
+            if (password !== confirmPassword) {
+                errorDiv.textContent = 'Passwords do not match';
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+            
+            if (password.length < 6) {
+                errorDiv.textContent = 'Password must be at least 6 characters';
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+            
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Registering...';
+            submitBtn.disabled = true;
+            
+            try {
+                const res = await fetch(`${API_BASE}/api/vendors/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, phone, password, location })
+                });
+                
+                const data = await res.json();
+                
+                if (res.ok) {
+                    successDiv.textContent = 'Registration successful! Please login.';
+                    successDiv.classList.remove('hidden');
+                    // Switch to login tab
+                    loginTab.click();
+                    document.getElementById('login-email').value = email;
+                } else {
+                    errorDiv.textContent = data.error || 'Registration failed';
                     errorDiv.classList.remove('hidden');
                 }
             } catch (err) {
