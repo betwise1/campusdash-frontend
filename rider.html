@@ -230,17 +230,12 @@
                 : 'https://campusdash-backend.onrender.com';
 
             // ========== AUTHENTICATION CHECK ==========
-            // Get rider ID from URL or localStorage
-            const urlParams = new URLSearchParams(window.location.search);
-            let RIDER_ID = urlParams.get('rider');
+            // Get token and rider ID from localStorage
+            const token = localStorage.getItem('riderToken');
+            let RIDER_ID = localStorage.getItem('riderId');
 
-            // If no rider in URL, check localStorage
-            if (!RIDER_ID) {
-                RIDER_ID = localStorage.getItem('riderId');
-            }
-
-            // If still no rider, redirect to login
-            if (!RIDER_ID) {
+            // If no token or rider ID, redirect to login
+            if (!token || !RIDER_ID) {
                 window.location.href = 'rider-login.html';
             }
 
@@ -248,14 +243,29 @@
             let RIDER_NAME = localStorage.getItem('riderName') || `Rider ${RIDER_ID}`;
             const EARNING_PER_DELIVERY = 4;
 
-            // Verify rider exists on backend
+            // Helper function for authenticated API calls
+            async function fetchWithAuth(url, options = {}) {
+                const token = localStorage.getItem('riderToken');
+                return fetch(url, {
+                    ...options,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                        ...options.headers
+                    }
+                });
+            }
+
+            // Verify rider exists on backend using token
             async function verifyRider() {
                 try {
-                    const res = await fetch(`${API_BASE}/api/riders/${RIDER_ID}/verify`);
+                    const res = await fetchWithAuth(`${API_BASE}/api/riders/me`);
                     if (!res.ok) {
-                        // Rider not found, clear storage and redirect to login
+                        // Token invalid or expired, clear storage and redirect to login
+                        localStorage.removeItem('riderToken');
                         localStorage.removeItem('riderId');
                         localStorage.removeItem('riderName');
+                        localStorage.removeItem('riderEmail');
                         localStorage.removeItem('riderPhone');
                         window.location.href = 'rider-login.html';
                     } else {
@@ -276,8 +286,10 @@
 
             // Logout function
             function logout() {
+                localStorage.removeItem('riderToken');
                 localStorage.removeItem('riderId');
                 localStorage.removeItem('riderName');
+                localStorage.removeItem('riderEmail');
                 localStorage.removeItem('riderPhone');
                 window.location.href = 'rider-login.html';
             }
@@ -297,7 +309,7 @@
             // Load Rider Earnings
             async function loadRiderEarnings() {
                 try {
-                    const res = await fetch(`${API_BASE}/api/riders/${RIDER_ID}/wallet`);
+                    const res = await fetchWithAuth(`${API_BASE}/api/riders/${RIDER_ID}/wallet`);
                     const data = await res.json();
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
@@ -423,14 +435,17 @@
             window.acceptOrder = async function(orderId) {
                 if (!isOnline) { alert('You are offline.'); return; }
                 try {
-                    await fetch(`${API_BASE}/api/orders/${orderId}/assign`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ riderId: RIDER_ID }) });
+                    await fetchWithAuth(`${API_BASE}/api/orders/${orderId}/assign`, { 
+                        method: 'PATCH', 
+                        body: JSON.stringify({ riderId: RIDER_ID }) 
+                    });
                     await Promise.all([loadReadyOrders(), loadMyOrders()]);
                 } catch(e) { alert('Failed to accept order.'); }
             };
 
             async function loadMyOrders() {
                 try {
-                    const res = await fetch(`${API_BASE}/api/riders/${RIDER_ID}/orders`);
+                    const res = await fetchWithAuth(`${API_BASE}/api/riders/${RIDER_ID}/orders`);
                     const orders = await res.json();
                     const container = document.getElementById('my-orders');
                     if (!orders.length) { 
@@ -467,9 +482,12 @@
             window.deliverOrder = async function(orderId) {
                 if (!confirm('Mark delivered? +₵4 earned')) return;
                 try {
-                    await fetch(`${API_BASE}/api/orders/${orderId}/deliver`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ riderId: RIDER_ID }) });
+                    await fetchWithAuth(`${API_BASE}/api/orders/${orderId}/deliver`, { 
+                        method: 'PATCH', 
+                        body: JSON.stringify({ riderId: RIDER_ID }) 
+                    });
                     await Promise.all([loadMyOrders(), loadReadyOrders(), loadRiderEarnings()]);
-                } catch(e) { alert('Failed to mark delivered.'); }
+                } catch(e) { console.error(e); alert('Failed to mark delivered.'); }
             };
 
             function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m])); }
