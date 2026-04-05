@@ -87,30 +87,37 @@
 </head>
 <body class="bg-gradient-to-br from-gray-50 via-white to-gray-50 font-sans antialiased">
 
-    <!-- Responsive Header -->
+    <!-- Responsive Header with Vendor/Rider Links -->
     <header class="bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 text-white shadow-xl sticky top-0 z-20">
-        <div class="container mx-auto px-3 sm:px-4 py-3 sm:py-4 flex justify-between items-center">
-            <div class="flex items-center space-x-2 sm:space-x-3">
-                <div class="bg-white/20 backdrop-blur-sm p-2 sm:p-2.5 rounded-xl">
-                    <i class="fas fa-motorcycle text-xl sm:text-2xl"></i>
+        <div class="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
+            <div class="flex flex-wrap justify-between items-center gap-2">
+                <div class="flex items-center space-x-2 sm:space-x-3">
+                    <div class="bg-white/20 backdrop-blur-sm p-2 sm:p-2.5 rounded-xl">
+                        <i class="fas fa-motorcycle text-xl sm:text-2xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg sm:text-2xl font-extrabold tracking-tight">CampusDash</h1>
+                        <p class="text-[10px] sm:text-xs text-emerald-100">Fast • Fresh • Delivered</p>
+                    </div>
                 </div>
-                <div>
-                    <h1 class="text-lg sm:text-2xl font-extrabold tracking-tight">CampusDash</h1>
-                    <p class="text-[10px] sm:text-xs text-emerald-100">Fast • Fresh • Delivered</p>
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <!-- Vendor Link -->
+                    <a href="vendor-login.html" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm px-2 sm:px-3 py-1.5 rounded-full text-xs sm:text-sm transition flex items-center gap-1">
+                        <i class="fas fa-store text-xs sm:text-sm"></i>
+                        <span class="hidden sm:inline">Vendor</span>
+                    </a>
+                    <!-- Rider Link -->
+                    <a href="rider-login.html" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm px-2 sm:px-3 py-1.5 rounded-full text-xs sm:text-sm transition flex items-center gap-1">
+                        <i class="fas fa-motorcycle text-xs sm:text-sm"></i>
+                        <span class="hidden sm:inline">Rider</span>
+                    </a>
+                    <!-- Campus Badge -->
+                    <div class="header-campus-badge flex items-center space-x-1 sm:space-x-2 bg-white/20 backdrop-blur-sm px-2 sm:px-4 py-1.5 sm:py-2 rounded-full">
+                        <i class="fas fa-map-marker-alt text-xs sm:text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium hidden sm:inline">Your Campus</span>
+                        <i class="fas fa-chevron-down text-[10px] sm:text-xs ml-0 sm:ml-1"></i>
+                    </div>
                 </div>
-<div class="flex gap-4 mt-4">
-    <a href="vendor-login.html" class="bg-emerald-600 text-white px-4 py-2 rounded-lg">
-        Become a Vendor
-    </a>
-    <a href="rider-login.html" class="bg-blue-600 text-white px-4 py-2 rounded-lg">
-        Become a Rider
-    </a>
-</div>
-            </div>
-            <div class="header-campus-badge flex items-center space-x-1 sm:space-x-2 bg-white/20 backdrop-blur-sm px-2 sm:px-4 py-1.5 sm:py-2 rounded-full">
-                <i class="fas fa-map-marker-alt text-xs sm:text-sm"></i>
-                <span class="text-xs sm:text-sm font-medium hidden sm:inline">Your Campus</span>
-                <i class="fas fa-chevron-down text-[10px] sm:text-xs ml-0 sm:ml-1"></i>
             </div>
         </div>
     </header>
