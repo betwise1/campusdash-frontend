@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>Admin Login | CampusDash</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        button:active { transform: scale(0.98); transition: transform 0.1s ease; }
+        .loading-spinner {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #9ca3af;
+        }
+        .password-toggle:hover {
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-purple-100 to-indigo-100 min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
+        <!-- Logo/Brand -->
+        <div class="text-center mb-8">
+            <div class="bg-gradient-to-r from-purple-600 to-indigo-600 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                <i class="fas fa-shield-alt text-white text-3xl"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-800">Admin Portal</h1>
+            <p class="text-gray-500 text-sm mt-1">Manage payouts and platform operations</p>
+        </div>
+
+        <!-- Error Message -->
+        <div id="error-message" class="hidden mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm flex items-center gap-2">
+            <i class="fas fa-exclamation-circle"></i>
+            <span id="error-text"></span>
+        </div>
+
+        <!-- Login Form -->
+        <form id="login-form" class="space-y-5">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                <div class="relative">
+                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                        <i class="fas fa-envelope text-sm"></i>
+                    </span>
+                    <input type="email" id="email" name="email" required 
+                        class="w-full border border-gray-200 rounded-lg pl-10 pr-4 py-3 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                        placeholder="admin@campusdash.com">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <div class="relative">
+                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                        <i class="fas fa-lock text-sm"></i>
+                    </span>
+                    <input type="password" id="password" name="password" required 
+                        class="w-full border border-gray-200 rounded-lg pl-10 pr-12 py-3 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                        placeholder="Enter your password">
+                    <span class="password-toggle" onclick="togglePassword()">
+                        <i class="fas fa-eye-slash text-sm" id="toggle-icon"></i>
+                    </span>
+                </div>
+            </div>
+            <button type="submit" id="login-btn" 
+                class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2 shadow-md">
+                <i class="fas fa-sign-in-alt"></i> Login
+            </button>
+        </form>
+
+        <!-- Demo Credentials (Production - Remove or comment out in live) -->
+        <div class="mt-6 pt-4 border-t text-center">
+            <p class="text-xs text-gray-400 mb-2">Demo Admin Credentials</p>
+            <div class="bg-gray-50 rounded-lg p-3 text-xs">
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-500">Email:</span>
+                    <code class="text-purple-600 font-mono">admin@campusdash.com</code>
+                    <button onclick="copyToClipboard('admin@campusdash.com')" class="text-gray-400 hover:text-purple-600">
+                        <i class="fas fa-copy text-xs"></i>
+                    </button>
+                </div>
+                <div class="flex justify-between items-center mt-1">
+                    <span class="text-gray-500">Password:</span>
+                    <code class="text-purple-600 font-mono">Admin@123</code>
+                    <button onclick="copyToClipboard('Admin@123')" class="text-gray-400 hover:text-purple-600">
+                        <i class="fas fa-copy text-xs"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://campusdash-backend.onrender.com';
+        
+        // Toggle password visibility
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const icon = document.getElementById('toggle-icon');
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            } else {
+                passwordInput.type = 'password';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            }
+        }
+        
+        // Copy to clipboard helper
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text);
+            const notification = document.createElement('div');
+            notification.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg text-sm shadow-lg z-50';
+            notification.innerHTML = '<i class="fas fa-check-circle mr-2"></i>Copied!';
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 2000);
+        }
+        
+        // Show error message
+        function showError(message) {
+            const errorDiv = document.getElementById('error-message');
+            const errorText = document.getElementById('error-text');
+            errorText.textContent = message;
+            errorDiv.classList.remove('hidden');
+            setTimeout(() => {
+                errorDiv.classList.add('hidden');
+            }, 5000);
+        }
+        
+        // Hide error message
+        function hideError() {
+            document.getElementById('error-message').classList.add('hidden');
+        }
+        
+        // Set loading state
+        function setLoading(isLoading) {
+            const btn = document.getElementById('login-btn');
+            if (isLoading) {
+                btn.disabled = true;
+                btn.innerHTML = '<div class="loading-spinner"></div> Logging in...';
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login';
+            }
+        }
+        
+        // Check if already logged in
+        function checkExistingSession() {
+            const token = localStorage.getItem('adminToken');
+            const expiry = localStorage.getItem('adminTokenExpiry');
+            
+            if (token && expiry) {
+                const now = Date.now();
+                if (now < parseInt(expiry)) {
+                    // Token is still valid, redirect to dashboard
+                    window.location.href = 'admin-dashboard.html';
+                    return true;
+                } else {
+                    // Token expired, clear it
+                    localStorage.removeItem('adminToken');
+                    localStorage.removeItem('adminTokenExpiry');
+                    localStorage.removeItem('adminEmail');
+                }
+            }
+            return false;
+        }
+        
+        // Validate email format
+        function isValidEmail(email) {
+            const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return re.test(email);
+        }
+        
+        // Handle login form submission
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            
+            // Clear previous errors
+            hideError();
+            
+            // Validate inputs
+            if (!email || !password) {
+                showError('Please enter both email and password');
+                return;
+            }
+            
+            if (!isValidEmail(email)) {
+                showError('Please enter a valid email address');
+                return;
+            }
+            
+            if (password.length < 6) {
+                showError('Password must be at least 6 characters');
+                return;
+            }
+            
+            setLoading(true);
+            
+            try {
+                // First, check if admin exists in database
+                // For now, use a secure comparison for demo admin
+                // In production, this should call your backend admin login endpoint
+                
+                // Production-ready admin authentication
+                // Uncomment this block when you have the backend admin login endpoint ready
+                /*
+                const response = await fetch(`${API_BASE}/api/admin/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    const token = data.token;
+                    const expiry = Date.now() + (7 * 24 * 60 * 60 * 1000); // 7 days
+                    
+                    localStorage.setItem('adminToken', token);
+                    localStorage.setItem('adminTokenExpiry', expiry);
+                    localStorage.setItem('adminEmail', email);
+                    localStorage.setItem('adminName', data.admin.name || 'Admin');
+                    
+                    window.location.href = 'admin-dashboard.html';
+                } else {
+                    showError(data.error || 'Invalid email or password');
+                }
+                */
+                
+                // Temporary demo authentication (Replace with above when backend ready)
+                // This is for testing purposes only
+                if (email === 'admin@campusdash.com' && password === 'Admin@123') {
+                    // Generate a simple token (in production, this comes from backend)
+                    const demoToken = 'admin_' + btoa(email + Date.now());
+                    const expiry = Date.now() + (7 * 24 * 60 * 60 * 1000);
+                    
+                    localStorage.setItem('adminToken', demoToken);
+                    localStorage.setItem('adminTokenExpiry', expiry);
+                    localStorage.setItem('adminEmail', email);
+                    localStorage.setItem('adminName', 'Super Admin');
+                    
+                    window.location.href = 'admin-dashboard.html';
+                } else {
+                    showError('Invalid email or password. Please use the demo credentials below.');
+                }
+                
+            } catch (err) {
+                console.error('Login error:', err);
+                showError('Network error. Please check your connection and try again.');
+            } finally {
+                setLoading(false);
+            }
+        });
+        
+        // Check for existing session on page load
+        if (checkExistingSession()) {
+            // Redirect will happen in the function
+        }
+        
+        // Add enter key support
+        document.getElementById('password').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('login-form').dispatchEvent(new Event('submit'));
+            }
+        });
+    </script>
+</body>
+</html>
