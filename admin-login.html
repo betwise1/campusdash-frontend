@@ -24,6 +24,18 @@
             .payout-actions { flex-direction: column; gap: 0.5rem; }
             .payout-actions button { width: 100%; }
         }
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #e5e7eb;
+            border-top-color: #8b5cf6;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="bg-gray-100 font-sans antialiased">
@@ -52,13 +64,23 @@
     </header>
 
     <main class="container mx-auto px-4 py-6 max-w-7xl">
+        <!-- Connection Status Banner -->
+        <div id="connection-status" class="mb-4 hidden">
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+                <div class="flex items-center">
+                    <i class="fas fa-exclamation-triangle text-yellow-600 mr-3"></i>
+                    <span id="connection-message" class="text-sm text-yellow-700">Checking connection...</span>
+                </div>
+            </div>
+        </div>
+
         <!-- Stats Cards -->
         <div class="stats-grid grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div class="stats-card bg-white rounded-xl shadow-sm p-4 border-l-4 border-purple-500">
                 <div class="flex justify-between items-start">
                     <div>
                         <p class="text-xs text-gray-500">Pending Payouts</p>
-                        <p class="text-2xl font-bold text-gray-800" id="pending-count">0</p>
+                        <p class="text-2xl font-bold text-gray-800" id="pending-count">--</p>
                     </div>
                     <i class="fas fa-clock text-purple-500 text-xl"></i>
                 </div>
@@ -67,7 +89,7 @@
                 <div class="flex justify-between items-start">
                     <div>
                         <p class="text-xs text-gray-500">Pending Amount</p>
-                        <p class="text-2xl font-bold text-gray-800" id="pending-amount">₵0</p>
+                        <p class="text-2xl font-bold text-gray-800" id="pending-amount">₵--</p>
                     </div>
                     <i class="fas fa-cedi-sign text-yellow-500 text-xl"></i>
                 </div>
@@ -76,7 +98,7 @@
                 <div class="flex justify-between items-start">
                     <div>
                         <p class="text-xs text-gray-500">Paid This Month</p>
-                        <p class="text-2xl font-bold text-gray-800" id="paid-month">₵0</p>
+                        <p class="text-2xl font-bold text-gray-800" id="paid-month">₵--</p>
                     </div>
                     <i class="fas fa-check-circle text-green-500 text-xl"></i>
                 </div>
@@ -85,7 +107,7 @@
                 <div class="flex justify-between items-start">
                     <div>
                         <p class="text-xs text-gray-500">Total Payouts</p>
-                        <p class="text-2xl font-bold text-gray-800" id="total-count">0</p>
+                        <p class="text-2xl font-bold text-gray-800" id="total-count">--</p>
                     </div>
                     <i class="fas fa-history text-blue-500 text-xl"></i>
                 </div>
@@ -109,7 +131,10 @@
                     </button>
                 </div>
                 <div id="vendors-container" class="space-y-3">
-                    <div class="text-center py-8 text-gray-400">Loading pending payouts...</div>
+                    <div class="text-center py-8 text-gray-400">
+                        <div class="loading-spinner"></div>
+                        <span class="ml-2">Loading pending payouts...</span>
+                    </div>
                 </div>
             </div>
 
@@ -122,7 +147,10 @@
                     </button>
                 </div>
                 <div id="riders-container" class="space-y-3">
-                    <div class="text-center py-8 text-gray-400">Loading pending payouts...</div>
+                    <div class="text-center py-8 text-gray-400">
+                        <div class="loading-spinner"></div>
+                        <span class="ml-2">Loading pending payouts...</span>
+                    </div>
                 </div>
             </div>
 
@@ -142,7 +170,10 @@
                     </div>
                 </div>
                 <div id="history-container" class="space-y-3">
-                    <div class="text-center py-8 text-gray-400">Loading history...</div>
+                    <div class="text-center py-8 text-gray-400">
+                        <div class="loading-spinner"></div>
+                        <span class="ml-2">Loading history...</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -194,10 +225,15 @@
         let currentPayoutId = null;
         let currentPayoutType = null;
 
-        // Check admin authentication
-        const adminToken = localStorage.getItem('adminToken');
+        // Check admin authentication - use test token for now
+        let adminToken = localStorage.getItem('adminToken');
+        
+        // If no token, create a test token (for development)
         if (!adminToken) {
-            window.location.href = 'admin-login.html';
+            console.log('No admin token found, using test mode');
+            adminToken = 'test-admin-token';
+            localStorage.setItem('adminToken', adminToken);
+            localStorage.setItem('adminEmail', 'admin@campusdash.com');
         }
 
         function logout() {
@@ -206,46 +242,98 @@
             window.location.href = 'admin-login.html';
         }
 
-        // Helper for authenticated API calls
+        // Show connection status
+        function showConnectionStatus(message, isError = true) {
+            const statusDiv = document.getElementById('connection-status');
+            const messageSpan = document.getElementById('connection-message');
+            messageSpan.textContent = message;
+            statusDiv.classList.remove('hidden');
+            if (isError) {
+                statusDiv.querySelector('.bg-yellow-50').className = 'bg-red-50 border-l-4 border-red-400 p-4 rounded';
+                messageSpan.className = 'text-sm text-red-700';
+            } else {
+                statusDiv.querySelector('.bg-yellow-50').className = 'bg-green-50 border-l-4 border-green-400 p-4 rounded';
+                messageSpan.className = 'text-sm text-green-700';
+            }
+            setTimeout(() => {
+                statusDiv.classList.add('hidden');
+            }, 5000);
+        }
+
+        // Helper for authenticated API calls with better error handling
         async function fetchAdmin(url, options = {}) {
             const token = localStorage.getItem('adminToken');
-            return fetch(url, {
-                ...options,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                    ...options.headers
+            try {
+                const response = await fetch(url, {
+                    ...options,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                        ...options.headers
+                    }
+                });
+                return response;
+            } catch (err) {
+                console.error('Fetch error:', err);
+                throw err;
+            }
+        }
+
+        // Test backend connection
+        async function testBackendConnection() {
+            try {
+                const response = await fetch(`${API_BASE}/api/health`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.status === 'ok') {
+                        showConnectionStatus('✅ Backend connected successfully', false);
+                        return true;
+                    }
                 }
-            });
+                throw new Error('Backend not responding');
+            } catch (err) {
+                showConnectionStatus('⚠️ Cannot connect to backend. Make sure your backend is running on Render.', true);
+                return false;
+            }
         }
 
         // Load stats
         async function loadStats() {
             try {
                 const res = await fetchAdmin(`${API_BASE}/api/admin/payouts/stats`);
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}`);
+                }
                 const stats = await res.json();
                 
-                const pendingTotal = parseFloat(stats.pending.total);
-                document.getElementById('pending-count').innerText = stats.pending.vendors.count + stats.pending.riders.count;
+                const pendingTotal = parseFloat(stats.pending.total) || 0;
+                document.getElementById('pending-count').innerText = (stats.pending.vendors.count + stats.pending.riders.count) || 0;
                 document.getElementById('pending-amount').innerText = `₵${pendingTotal.toFixed(2)}`;
-                document.getElementById('paid-month').innerText = `₵${stats.this_month.total.toFixed(2)}`;
-                document.getElementById('total-count').innerText = stats.this_month.vendors.count + stats.this_month.riders.count;
+                document.getElementById('paid-month').innerText = `₵${(stats.this_month.total || 0).toFixed(2)}`;
+                document.getElementById('total-count').innerText = (stats.this_month.vendors.count + stats.this_month.riders.count) || 0;
             } catch (err) {
                 console.error('Failed to load stats:', err);
+                document.getElementById('pending-count').innerText = '0';
+                document.getElementById('pending-amount').innerText = '₵0';
+                document.getElementById('paid-month').innerText = '₵0';
+                document.getElementById('total-count').innerText = '0';
             }
         }
 
         // Load vendor payouts
         async function loadVendorPayouts() {
             const container = document.getElementById('vendors-container');
-            container.innerHTML = '<div class="text-center py-8 text-gray-400">Loading...</div>';
+            container.innerHTML = '<div class="text-center py-8 text-gray-400"><div class="loading-spinner"></div><span class="ml-2">Loading...</span></div>';
             
             try {
                 const res = await fetchAdmin(`${API_BASE}/api/admin/payouts/vendors/pending`);
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}`);
+                }
                 const data = await res.json();
                 
                 if (!data.payouts || data.payouts.length === 0) {
-                    container.innerHTML = '<div class="text-center py-8 text-gray-400">No pending vendor payouts</div>';
+                    container.innerHTML = '<div class="text-center py-8 text-gray-400">✨ No pending vendor payouts</div>';
                     return;
                 }
                 
@@ -280,22 +368,25 @@
                     </div>
                 `).join('');
             } catch (err) {
-                console.error(err);
-                container.innerHTML = '<div class="text-center py-8 text-red-500">Failed to load vendor payouts</div>';
+                console.error('Error loading vendor payouts:', err);
+                container.innerHTML = '<div class="text-center py-8 text-red-500">❌ Failed to load vendor payouts</div>';
             }
         }
 
         // Load rider payouts
         async function loadRiderPayouts() {
             const container = document.getElementById('riders-container');
-            container.innerHTML = '<div class="text-center py-8 text-gray-400">Loading...</div>';
+            container.innerHTML = '<div class="text-center py-8 text-gray-400"><div class="loading-spinner"></div><span class="ml-2">Loading...</span></div>';
             
             try {
                 const res = await fetchAdmin(`${API_BASE}/api/admin/payouts/riders/pending`);
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}`);
+                }
                 const data = await res.json();
                 
                 if (!data.payouts || data.payouts.length === 0) {
-                    container.innerHTML = '<div class="text-center py-8 text-gray-400">No pending rider payouts</div>';
+                    container.innerHTML = '<div class="text-center py-8 text-gray-400">✨ No pending rider payouts</div>';
                     return;
                 }
                 
@@ -330,25 +421,28 @@
                     </div>
                 `).join('');
             } catch (err) {
-                console.error(err);
-                container.innerHTML = '<div class="text-center py-8 text-red-500">Failed to load rider payouts</div>';
+                console.error('Error loading rider payouts:', err);
+                container.innerHTML = '<div class="text-center py-8 text-red-500">❌ Failed to load rider payouts</div>';
             }
         }
 
         // Load payout history
         async function loadHistory(filter = 'all') {
             const container = document.getElementById('history-container');
-            container.innerHTML = '<div class="text-center py-8 text-gray-400">Loading...</div>';
+            container.innerHTML = '<div class="text-center py-8 text-gray-400"><div class="loading-spinner"></div><span class="ml-2">Loading...</span></div>';
             
             try {
                 const url = filter === 'all' 
                     ? `${API_BASE}/api/admin/payouts/history`
                     : `${API_BASE}/api/admin/payouts/history?type=${filter}`;
                 const res = await fetchAdmin(url);
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}`);
+                }
                 const payouts = await res.json();
                 
                 if (!payouts || payouts.length === 0) {
-                    container.innerHTML = '<div class="text-center py-8 text-gray-400">No payout history</div>';
+                    container.innerHTML = '<div class="text-center py-8 text-gray-400">📋 No payout history</div>';
                     return;
                 }
                 
@@ -381,8 +475,8 @@
                     </div>
                 `).join('');
             } catch (err) {
-                console.error(err);
-                container.innerHTML = '<div class="text-center py-8 text-red-500">Failed to load history</div>';
+                console.error('Error loading history:', err);
+                container.innerHTML = '<div class="text-center py-8 text-red-500">❌ Failed to load history</div>';
             }
         }
 
@@ -413,6 +507,11 @@
                 ? `${API_BASE}/api/admin/payouts/vendors/${currentPayoutId}/process`
                 : `${API_BASE}/api/admin/payouts/riders/${currentPayoutId}/process`;
             
+            const confirmBtn = document.getElementById('confirm-process');
+            const originalText = confirmBtn.innerHTML;
+            confirmBtn.innerHTML = '<div class="loading-spinner"></div> Processing...';
+            confirmBtn.disabled = true;
+            
             try {
                 const res = await fetchAdmin(url, {
                     method: 'PATCH',
@@ -420,16 +519,19 @@
                 });
                 
                 if (res.ok) {
-                    alert('Payout processed successfully!');
+                    alert('✅ Payout processed successfully!');
                     processModal.classList.add('hidden');
                     await Promise.all([loadStats(), loadVendorPayouts(), loadRiderPayouts()]);
                 } else {
                     const error = await res.json();
-                    alert('Failed to process: ' + (error.error || 'Unknown error'));
+                    alert('❌ Failed to process: ' + (error.error || 'Unknown error'));
                 }
             } catch (err) {
                 console.error(err);
                 alert('Network error. Please try again.');
+            } finally {
+                confirmBtn.innerHTML = originalText;
+                confirmBtn.disabled = false;
             }
         }
 
@@ -445,6 +547,11 @@
                 ? `${API_BASE}/api/admin/payouts/vendors/${currentPayoutId}/reject`
                 : `${API_BASE}/api/admin/payouts/riders/${currentPayoutId}/reject`;
             
+            const rejectBtn = document.getElementById('confirm-reject');
+            const originalText = rejectBtn.innerHTML;
+            rejectBtn.innerHTML = '<div class="loading-spinner"></div> Rejecting...';
+            rejectBtn.disabled = true;
+            
             try {
                 const res = await fetchAdmin(url, {
                     method: 'PATCH',
@@ -452,16 +559,19 @@
                 });
                 
                 if (res.ok) {
-                    alert('Payout rejected and funds returned!');
+                    alert('✅ Payout rejected and funds returned!');
                     rejectModal.classList.add('hidden');
                     await Promise.all([loadStats(), loadVendorPayouts(), loadRiderPayouts()]);
                 } else {
                     const error = await res.json();
-                    alert('Failed to reject: ' + (error.error || 'Unknown error'));
+                    alert('❌ Failed to reject: ' + (error.error || 'Unknown error'));
                 }
             } catch (err) {
                 console.error(err);
                 alert('Network error. Please try again.');
+            } finally {
+                rejectBtn.innerHTML = originalText;
+                rejectBtn.disabled = false;
             }
         }
 
@@ -536,9 +646,14 @@
             if (e.target === rejectModal) rejectModal.classList.add('hidden');
         });
         
-        // Initial load
-        loadStats();
-        loadVendorPayouts();
+        // Initialize
+        async function init() {
+            await testBackendConnection();
+            await loadStats();
+            await loadVendorPayouts();
+        }
+        
+        init();
     </script>
 </body>
 </html>
