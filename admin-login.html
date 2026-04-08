@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Admin Dashboard | CampusDash</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        button:active { transform: scale(0.98); }
+        .payout-card {
+            transition: all 0.2s ease;
+        }
+        .payout-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+        }
+        @media (max-width: 640px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+            .stats-card { padding: 0.75rem; }
+            .stats-card .text-2xl { font-size: 1.25rem; }
+            .payout-actions { flex-direction: column; gap: 0.5rem; }
+            .payout-actions button { width: 100%; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans antialiased">
+
+    <!-- Header -->
+    <header class="bg-purple-700 text-white shadow-md sticky top-0 z-20">
+        <div class="container mx-auto px-4 py-4 flex flex-wrap justify-between items-center gap-3">
+            <div class="flex items-center gap-3">
+                <div class="bg-white/20 p-2 rounded-xl">
+                    <i class="fas fa-chart-line text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold">Admin Dashboard</h1>
+                    <p class="text-xs text-purple-200">Payout Management</p>
+                </div>
+            </div>
+            <div class="flex gap-3">
+                <div class="bg-white/20 px-4 py-2 rounded-full text-sm">
+                    <i class="fas fa-user-shield mr-1"></i> Admin
+                </div>
+                <button onclick="logout()" class="bg-red-500/20 hover:bg-red-500/30 px-4 py-2 rounded-full text-sm transition">
+                    <i class="fas fa-sign-out-alt mr-1"></i> Logout
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-6 max-w-7xl">
+        <!-- Stats Cards -->
+        <div class="stats-grid grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="stats-card bg-white rounded-xl shadow-sm p-4 border-l-4 border-purple-500">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs text-gray-500">Pending Payouts</p>
+                        <p class="text-2xl font-bold text-gray-800" id="pending-count">0</p>
+                    </div>
+                    <i class="fas fa-clock text-purple-500 text-xl"></i>
+                </div>
+            </div>
+            <div class="stats-card bg-white rounded-xl shadow-sm p-4 border-l-4 border-yellow-500">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs text-gray-500">Pending Amount</p>
+                        <p class="text-2xl font-bold text-gray-800" id="pending-amount">₵0</p>
+                    </div>
+                    <i class="fas fa-cedi-sign text-yellow-500 text-xl"></i>
+                </div>
+            </div>
+            <div class="stats-card bg-white rounded-xl shadow-sm p-4 border-l-4 border-green-500">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs text-gray-500">Paid This Month</p>
+                        <p class="text-2xl font-bold text-gray-800" id="paid-month">₵0</p>
+                    </div>
+                    <i class="fas fa-check-circle text-green-500 text-xl"></i>
+                </div>
+            </div>
+            <div class="stats-card bg-white rounded-xl shadow-sm p-4 border-l-4 border-blue-500">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs text-gray-500">Total Payouts</p>
+                        <p class="text-2xl font-bold text-gray-800" id="total-count">0</p>
+                    </div>
+                    <i class="fas fa-history text-blue-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
+            <div class="border-b flex flex-wrap gap-1 px-4">
+                <button id="tab-vendors" class="tab-btn py-3 px-4 text-sm font-medium border-b-2 border-purple-600 text-purple-600 transition">Vendors</button>
+                <button id="tab-riders" class="tab-btn py-3 px-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition">Riders</button>
+                <button id="tab-history" class="tab-btn py-3 px-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition">History</button>
+            </div>
+
+            <!-- Vendors Tab -->
+            <div id="vendors-tab" class="p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold text-gray-800">Pending Vendor Payouts</h2>
+                    <button id="refresh-vendors" class="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-lg text-sm transition">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+                <div id="vendors-container" class="space-y-3">
+                    <div class="text-center py-8 text-gray-400">Loading pending payouts...</div>
+                </div>
+            </div>
+
+            <!-- Riders Tab -->
+            <div id="riders-tab" class="p-4 hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold text-gray-800">Pending Rider Payouts</h2>
+                    <button id="refresh-riders" class="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-lg text-sm transition">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+                <div id="riders-container" class="space-y-3">
+                    <div class="text-center py-8 text-gray-400">Loading pending payouts...</div>
+                </div>
+            </div>
+
+            <!-- History Tab -->
+            <div id="history-tab" class="p-4 hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold text-gray-800">Payout History</h2>
+                    <div class="flex gap-2">
+                        <select id="history-filter" class="border border-gray-200 rounded-lg px-3 py-1 text-sm">
+                            <option value="all">All</option>
+                            <option value="vendors">Vendors</option>
+                            <option value="riders">Riders</option>
+                        </select>
+                        <button id="refresh-history" class="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-lg text-sm transition">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                <div id="history-container" class="space-y-3">
+                    <div class="text-center py-8 text-gray-400">Loading history...</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Process Payout Modal -->
+    <div id="process-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl max-w-md w-full p-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Process Payout</h3>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Transaction Reference (Optional)</label>
+                <input type="text" id="transaction-ref" placeholder="e.g., MOMO-123456" 
+                    class="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-purple-500">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Notes (Optional)</label>
+                <textarea id="process-notes" rows="2" placeholder="Additional notes..." 
+                    class="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-purple-500"></textarea>
+            </div>
+            <div class="flex gap-3">
+                <button id="confirm-process" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg transition">Confirm Process</button>
+                <button id="cancel-process" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 rounded-lg transition">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reject Payout Modal -->
+    <div id="reject-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl max-w-md w-full p-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Reject Payout</h3>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Reason for Rejection</label>
+                <textarea id="reject-reason" rows="3" placeholder="Enter reason for rejection..." 
+                    class="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-red-500"></textarea>
+            </div>
+            <div class="flex gap-3">
+                <button id="confirm-reject" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg transition">Confirm Reject</button>
+                <button id="cancel-reject" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 rounded-lg transition">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-white border-t mt-8 py-4 text-center text-gray-400 text-xs">
+        <p>© 2025 CampusDash – Admin Portal</p>
+    </footer>
+
+    <script>
+        const API_BASE = 'https://campusdash-backend.onrender.com';
+        let currentPayoutId = null;
+        let currentPayoutType = null;
+
+        // Check admin authentication
+        const adminToken = localStorage.getItem('adminToken');
+        if (!adminToken) {
+            window.location.href = 'admin-login.html';
+        }
+
+        function logout() {
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('adminEmail');
+            window.location.href = 'admin-login.html';
+        }
+
+        // Helper for authenticated API calls
+        async function fetchAdmin(url, options = {}) {
+            const token = localStorage.getItem('adminToken');
+            return fetch(url, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                    ...options.headers
+                }
+            });
+        }
+
+        // Load stats
+        async function loadStats() {
+            try {
+                const res = await fetchAdmin(`${API_BASE}/api/admin/payouts/stats`);
+                const stats = await res.json();
+                
+                const pendingTotal = parseFloat(stats.pending.total);
+                document.getElementById('pending-count').innerText = stats.pending.vendors.count + stats.pending.riders.count;
+                document.getElementById('pending-amount').innerText = `₵${pendingTotal.toFixed(2)}`;
+                document.getElementById('paid-month').innerText = `₵${stats.this_month.total.toFixed(2)}`;
+                document.getElementById('total-count').innerText = stats.this_month.vendors.count + stats.this_month.riders.count;
+            } catch (err) {
+                console.error('Failed to load stats:', err);
+            }
+        }
+
+        // Load vendor payouts
+        async function loadVendorPayouts() {
+            const container = document.getElementById('vendors-container');
+            container.innerHTML = '<div class="text-center py-8 text-gray-400">Loading...</div>';
+            
+            try {
+                const res = await fetchAdmin(`${API_BASE}/api/admin/payouts/vendors/pending`);
+                const data = await res.json();
+                
+                if (!data.payouts || data.payouts.length === 0) {
+                    container.innerHTML = '<div class="text-center py-8 text-gray-400">No pending vendor payouts</div>';
+                    return;
+                }
+                
+                container.innerHTML = data.payouts.map(p => `
+                    <div class="payout-card bg-white border border-gray-200 rounded-lg p-4">
+                        <div class="flex flex-wrap justify-between items-start gap-3">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 flex-wrap mb-2">
+                                    <span class="font-bold text-gray-800">${escapeHtml(p.vendor_name)}</span>
+                                    <span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">Vendor</span>
+                                </div>
+                                <div class="text-sm text-gray-600 space-y-1">
+                                    <div><i class="fas fa-envelope w-5"></i> ${escapeHtml(p.vendor_email)}</div>
+                                    <div><i class="fas fa-phone w-5"></i> ${escapeHtml(p.vendor_phone)}</div>
+                                    <div><i class="fas fa-mobile-alt w-5"></i> ${escapeHtml(p.mobile_money_number || 'Not set')}</div>
+                                    <div><i class="fas fa-calendar w-5"></i> Requested: ${new Date(p.created_at).toLocaleString()}</div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-2xl font-bold text-purple-600">₵${parseFloat(p.amount).toFixed(2)}</div>
+                                <div class="text-xs text-gray-400">${p.payment_method}</div>
+                                <div class="payout-actions flex gap-2 mt-3">
+                                    <button onclick="openProcessModal(${p.id}, 'vendor')" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg text-sm transition">
+                                        <i class="fas fa-check"></i> Process
+                                    </button>
+                                    <button onclick="openRejectModal(${p.id}, 'vendor')" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-lg text-sm transition">
+                                        <i class="fas fa-times"></i> Reject
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                console.error(err);
+                container.innerHTML = '<div class="text-center py-8 text-red-500">Failed to load vendor payouts</div>';
+            }
+        }
+
+        // Load rider payouts
+        async function loadRiderPayouts() {
+            const container = document.getElementById('riders-container');
+            container.innerHTML = '<div class="text-center py-8 text-gray-400">Loading...</div>';
+            
+            try {
+                const res = await fetchAdmin(`${API_BASE}/api/admin/payouts/riders/pending`);
+                const data = await res.json();
+                
+                if (!data.payouts || data.payouts.length === 0) {
+                    container.innerHTML = '<div class="text-center py-8 text-gray-400">No pending rider payouts</div>';
+                    return;
+                }
+                
+                container.innerHTML = data.payouts.map(p => `
+                    <div class="payout-card bg-white border border-gray-200 rounded-lg p-4">
+                        <div class="flex flex-wrap justify-between items-start gap-3">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 flex-wrap mb-2">
+                                    <span class="font-bold text-gray-800">${escapeHtml(p.rider_name)}</span>
+                                    <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Rider</span>
+                                </div>
+                                <div class="text-sm text-gray-600 space-y-1">
+                                    <div><i class="fas fa-envelope w-5"></i> ${escapeHtml(p.rider_email)}</div>
+                                    <div><i class="fas fa-phone w-5"></i> ${escapeHtml(p.rider_phone)}</div>
+                                    <div><i class="fas fa-mobile-alt w-5"></i> ${escapeHtml(p.mobile_money_number || 'Not set')}</div>
+                                    <div><i class="fas fa-calendar w-5"></i> Requested: ${new Date(p.created_at).toLocaleString()}</div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-2xl font-bold text-blue-600">₵${parseFloat(p.amount).toFixed(2)}</div>
+                                <div class="text-xs text-gray-400">${p.payment_method}</div>
+                                <div class="payout-actions flex gap-2 mt-3">
+                                    <button onclick="openProcessModal(${p.id}, 'rider')" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg text-sm transition">
+                                        <i class="fas fa-check"></i> Process
+                                    </button>
+                                    <button onclick="openRejectModal(${p.id}, 'rider')" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-lg text-sm transition">
+                                        <i class="fas fa-times"></i> Reject
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                console.error(err);
+                container.innerHTML = '<div class="text-center py-8 text-red-500">Failed to load rider payouts</div>';
+            }
+        }
+
+        // Load payout history
+        async function loadHistory(filter = 'all') {
+            const container = document.getElementById('history-container');
+            container.innerHTML = '<div class="text-center py-8 text-gray-400">Loading...</div>';
+            
+            try {
+                const url = filter === 'all' 
+                    ? `${API_BASE}/api/admin/payouts/history`
+                    : `${API_BASE}/api/admin/payouts/history?type=${filter}`;
+                const res = await fetchAdmin(url);
+                const payouts = await res.json();
+                
+                if (!payouts || payouts.length === 0) {
+                    container.innerHTML = '<div class="text-center py-8 text-gray-400">No payout history</div>';
+                    return;
+                }
+                
+                container.innerHTML = payouts.map(p => `
+                    <div class="bg-white border border-gray-200 rounded-lg p-4">
+                        <div class="flex flex-wrap justify-between items-start gap-3">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 flex-wrap mb-2">
+                                    <span class="font-bold text-gray-800">${escapeHtml(p.user_name || p.vendor_name || p.rider_name)}</span>
+                                    <span class="text-xs ${p.user_type === 'vendor' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'} px-2 py-0.5 rounded-full">
+                                        ${p.user_type === 'vendor' ? 'Vendor' : 'Rider'}
+                                    </span>
+                                    <span class="text-xs ${p.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'} px-2 py-0.5 rounded-full">
+                                        ${p.status}
+                                    </span>
+                                </div>
+                                <div class="text-sm text-gray-600">
+                                    <div><i class="fas fa-calendar w-5"></i> Processed: ${new Date(p.processed_at).toLocaleString()}</div>
+                                    <div><i class="fas fa-receipt w-5"></i> Ref: ${p.reference || 'N/A'}</div>
+                                    ${p.notes ? `<div><i class="fas fa-sticky-note w-5"></i> ${escapeHtml(p.notes)}</div>` : ''}
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-xl font-bold ${p.status === 'completed' ? 'text-green-600' : 'text-red-600'}">
+                                    ₵${parseFloat(p.amount).toFixed(2)}
+                                </div>
+                                <div class="text-xs text-gray-400">${p.payment_method}</div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                console.error(err);
+                container.innerHTML = '<div class="text-center py-8 text-red-500">Failed to load history</div>';
+            }
+        }
+
+        // Modal functions
+        const processModal = document.getElementById('process-modal');
+        const rejectModal = document.getElementById('reject-modal');
+
+        function openProcessModal(payoutId, type) {
+            currentPayoutId = payoutId;
+            currentPayoutType = type;
+            document.getElementById('transaction-ref').value = '';
+            document.getElementById('process-notes').value = '';
+            processModal.classList.remove('hidden');
+        }
+
+        function openRejectModal(payoutId, type) {
+            currentPayoutId = payoutId;
+            currentPayoutType = type;
+            document.getElementById('reject-reason').value = '';
+            rejectModal.classList.remove('hidden');
+        }
+
+        async function processPayout() {
+            const transactionRef = document.getElementById('transaction-ref').value;
+            const notes = document.getElementById('process-notes').value;
+            
+            const url = currentPayoutType === 'vendor'
+                ? `${API_BASE}/api/admin/payouts/vendors/${currentPayoutId}/process`
+                : `${API_BASE}/api/admin/payouts/riders/${currentPayoutId}/process`;
+            
+            try {
+                const res = await fetchAdmin(url, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ transaction_reference: transactionRef, notes })
+                });
+                
+                if (res.ok) {
+                    alert('Payout processed successfully!');
+                    processModal.classList.add('hidden');
+                    await Promise.all([loadStats(), loadVendorPayouts(), loadRiderPayouts()]);
+                } else {
+                    const error = await res.json();
+                    alert('Failed to process: ' + (error.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Network error. Please try again.');
+            }
+        }
+
+        async function rejectPayout() {
+            const reason = document.getElementById('reject-reason').value;
+            
+            if (!reason) {
+                alert('Please provide a reason for rejection');
+                return;
+            }
+            
+            const url = currentPayoutType === 'vendor'
+                ? `${API_BASE}/api/admin/payouts/vendors/${currentPayoutId}/reject`
+                : `${API_BASE}/api/admin/payouts/riders/${currentPayoutId}/reject`;
+            
+            try {
+                const res = await fetchAdmin(url, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ reason })
+                });
+                
+                if (res.ok) {
+                    alert('Payout rejected and funds returned!');
+                    rejectModal.classList.add('hidden');
+                    await Promise.all([loadStats(), loadVendorPayouts(), loadRiderPayouts()]);
+                } else {
+                    const error = await res.json();
+                    alert('Failed to reject: ' + (error.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Network error. Please try again.');
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
+        }
+
+        // Tab switching
+        const vendorsTab = document.getElementById('vendors-tab');
+        const ridersTab = document.getElementById('riders-tab');
+        const historyTab = document.getElementById('history-tab');
+        
+        document.getElementById('tab-vendors').addEventListener('click', () => {
+            vendorsTab.classList.remove('hidden');
+            ridersTab.classList.add('hidden');
+            historyTab.classList.add('hidden');
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('border-purple-600', 'text-purple-600');
+                btn.classList.add('border-transparent', 'text-gray-500');
+            });
+            document.getElementById('tab-vendors').classList.add('border-purple-600', 'text-purple-600');
+            loadVendorPayouts();
+        });
+        
+        document.getElementById('tab-riders').addEventListener('click', () => {
+            vendorsTab.classList.add('hidden');
+            ridersTab.classList.remove('hidden');
+            historyTab.classList.add('hidden');
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('border-purple-600', 'text-purple-600');
+                btn.classList.add('border-transparent', 'text-gray-500');
+            });
+            document.getElementById('tab-riders').classList.add('border-purple-600', 'text-purple-600');
+            loadRiderPayouts();
+        });
+        
+        document.getElementById('tab-history').addEventListener('click', () => {
+            vendorsTab.classList.add('hidden');
+            ridersTab.classList.add('hidden');
+            historyTab.classList.remove('hidden');
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('border-purple-600', 'text-purple-600');
+                btn.classList.add('border-transparent', 'text-gray-500');
+            });
+            document.getElementById('tab-history').classList.add('border-purple-600', 'text-purple-600');
+            loadHistory(document.getElementById('history-filter').value);
+        });
+        
+        // Refresh buttons
+        document.getElementById('refresh-vendors').addEventListener('click', loadVendorPayouts);
+        document.getElementById('refresh-riders').addEventListener('click', loadRiderPayouts);
+        document.getElementById('refresh-history').addEventListener('click', () => {
+            loadHistory(document.getElementById('history-filter').value);
+        });
+        
+        document.getElementById('history-filter').addEventListener('change', (e) => {
+            loadHistory(e.target.value);
+        });
+        
+        // Modal buttons
+        document.getElementById('confirm-process').addEventListener('click', processPayout);
+        document.getElementById('cancel-process').addEventListener('click', () => processModal.classList.add('hidden'));
+        document.getElementById('confirm-reject').addEventListener('click', rejectPayout);
+        document.getElementById('cancel-reject').addEventListener('click', () => rejectModal.classList.add('hidden'));
+        
+        // Close modals on outside click
+        processModal.addEventListener('click', (e) => {
+            if (e.target === processModal) processModal.classList.add('hidden');
+        });
+        rejectModal.addEventListener('click', (e) => {
+            if (e.target === rejectModal) rejectModal.classList.add('hidden');
+        });
+        
+        // Initial load
+        loadStats();
+        loadVendorPayouts();
+    </script>
+</body>
+</html>
