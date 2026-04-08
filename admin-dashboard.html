@@ -2,290 +2,232 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
-    <title>Admin Login | CampusDash</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Admin Dashboard | CampusDash</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
         * { font-family: 'Inter', sans-serif; }
-        button:active { transform: scale(0.98); transition: transform 0.1s ease; }
         .loading-spinner {
             display: inline-block;
-            width: 18px;
-            height: 18px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-top-color: white;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #e5e7eb;
+            border-top-color: #8b5cf6;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
         }
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-        .password-toggle {
-            position: absolute;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            cursor: pointer;
-            color: #9ca3af;
-        }
-        .password-toggle:hover {
-            color: #6b7280;
+        .payout-card { transition: all 0.2s ease; }
+        .payout-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+        @media (max-width: 640px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+            .stats-card { padding: 0.75rem; }
+            .stats-card .text-2xl { font-size: 1.25rem; }
+            .payout-actions { flex-direction: column; gap: 0.5rem; }
+            .payout-actions button { width: 100%; }
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-purple-100 to-indigo-100 min-h-screen flex items-center justify-center p-4">
+<body class="bg-gray-100 font-sans antialiased">
 
-    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
-        <!-- Logo/Brand -->
-        <div class="text-center mb-8">
-            <div class="bg-gradient-to-r from-purple-600 to-indigo-600 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                <i class="fas fa-shield-alt text-white text-3xl"></i>
+    <header class="bg-purple-700 text-white shadow-md sticky top-0 z-20">
+        <div class="container mx-auto px-4 py-4 flex flex-wrap justify-between items-center gap-3">
+            <div class="flex items-center gap-3">
+                <div class="bg-white/20 p-2 rounded-xl"><i class="fas fa-chart-line text-xl"></i></div>
+                <div><h1 class="text-xl font-bold">Admin Dashboard</h1><p class="text-xs text-purple-200">Payout Management</p></div>
             </div>
-            <h1 class="text-2xl font-bold text-gray-800">Admin Portal</h1>
-            <p class="text-gray-500 text-sm mt-1">Manage payouts and platform operations</p>
-        </div>
-
-        <!-- Error Message -->
-        <div id="error-message" class="hidden mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm flex items-center gap-2">
-            <i class="fas fa-exclamation-circle"></i>
-            <span id="error-text"></span>
-        </div>
-
-        <!-- Login Form -->
-        <form id="login-form" class="space-y-5">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                <div class="relative">
-                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-                        <i class="fas fa-envelope text-sm"></i>
-                    </span>
-                    <input type="email" id="email" name="email" required 
-                        class="w-full border border-gray-200 rounded-lg pl-10 pr-4 py-3 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-                        placeholder="admin@campusdash.com">
-                </div>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                <div class="relative">
-                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-                        <i class="fas fa-lock text-sm"></i>
-                    </span>
-                    <input type="password" id="password" name="password" required 
-                        class="w-full border border-gray-200 rounded-lg pl-10 pr-12 py-3 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-                        placeholder="Enter your password">
-                    <span class="password-toggle" onclick="togglePassword()">
-                        <i class="fas fa-eye-slash text-sm" id="toggle-icon"></i>
-                    </span>
-                </div>
-            </div>
-            <button type="submit" id="login-btn" 
-                class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2 shadow-md">
-                <i class="fas fa-sign-in-alt"></i> Login
-            </button>
-        </form>
-
-        <!-- Demo Credentials (Production - Remove or comment out in live) -->
-        <div class="mt-6 pt-4 border-t text-center">
-            <p class="text-xs text-gray-400 mb-2">Demo Admin Credentials</p>
-            <div class="bg-gray-50 rounded-lg p-3 text-xs">
-                <div class="flex justify-between items-center">
-                    <span class="text-gray-500">Email:</span>
-                    <code class="text-purple-600 font-mono">admin@campusdash.com</code>
-                    <button onclick="copyToClipboard('admin@campusdash.com')" class="text-gray-400 hover:text-purple-600">
-                        <i class="fas fa-copy text-xs"></i>
-                    </button>
-                </div>
-                <div class="flex justify-between items-center mt-1">
-                    <span class="text-gray-500">Password:</span>
-                    <code class="text-purple-600 font-mono">Admin@123</code>
-                    <button onclick="copyToClipboard('Admin@123')" class="text-gray-400 hover:text-purple-600">
-                        <i class="fas fa-copy text-xs"></i>
-                    </button>
-                </div>
+            <div class="flex gap-3">
+                <div class="bg-white/20 px-4 py-2 rounded-full text-sm"><i class="fas fa-user-shield mr-1"></i> Admin</div>
+                <button onclick="logout()" class="bg-red-500/20 hover:bg-red-500/30 px-4 py-2 rounded-full text-sm transition"><i class="fas fa-sign-out-alt mr-1"></i> Logout</button>
             </div>
         </div>
-    </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-6 max-w-7xl">
+        <div id="connection-status" class="mb-4 hidden">
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded"><div class="flex items-center"><i class="fas fa-exclamation-triangle text-yellow-600 mr-3"></i><span id="connection-message" class="text-sm text-yellow-700"></span></div></div>
+        </div>
+
+        <div class="stats-grid grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="stats-card bg-white rounded-xl shadow-sm p-4 border-l-4 border-purple-500"><div class="flex justify-between items-start"><div><p class="text-xs text-gray-500">Pending Payouts</p><p class="text-2xl font-bold text-gray-800" id="pending-count">0</p></div><i class="fas fa-clock text-purple-500 text-xl"></i></div></div>
+            <div class="stats-card bg-white rounded-xl shadow-sm p-4 border-l-4 border-yellow-500"><div class="flex justify-between items-start"><div><p class="text-xs text-gray-500">Pending Amount</p><p class="text-2xl font-bold text-gray-800" id="pending-amount">₵0</p></div><i class="fas fa-cedi-sign text-yellow-500 text-xl"></i></div></div>
+            <div class="stats-card bg-white rounded-xl shadow-sm p-4 border-l-4 border-green-500"><div class="flex justify-between items-start"><div><p class="text-xs text-gray-500">Paid This Month</p><p class="text-2xl font-bold text-gray-800" id="paid-month">₵0</p></div><i class="fas fa-check-circle text-green-500 text-xl"></i></div></div>
+            <div class="stats-card bg-white rounded-xl shadow-sm p-4 border-l-4 border-blue-500"><div class="flex justify-between items-start"><div><p class="text-xs text-gray-500">Total Payouts</p><p class="text-2xl font-bold text-gray-800" id="total-count">0</p></div><i class="fas fa-history text-blue-500 text-xl"></i></div></div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
+            <div class="border-b flex flex-wrap gap-1 px-4">
+                <button id="tab-vendors" class="tab-btn py-3 px-4 text-sm font-medium border-b-2 border-purple-600 text-purple-600 transition">Vendors</button>
+                <button id="tab-riders" class="tab-btn py-3 px-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition">Riders</button>
+                <button id="tab-history" class="tab-btn py-3 px-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition">History</button>
+            </div>
+
+            <div id="vendors-tab" class="p-4"><div class="flex justify-between items-center mb-4"><h2 class="text-lg font-bold text-gray-800">Pending Vendor Payouts</h2><button id="refresh-vendors" class="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-lg text-sm transition"><i class="fas fa-sync-alt"></i> Refresh</button></div><div id="vendors-container" class="space-y-3"><div class="text-center py-8 text-gray-400"><div class="loading-spinner"></div><span class="ml-2">Loading...</span></div></div></div>
+            <div id="riders-tab" class="p-4 hidden"><div class="flex justify-between items-center mb-4"><h2 class="text-lg font-bold text-gray-800">Pending Rider Payouts</h2><button id="refresh-riders" class="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-lg text-sm transition"><i class="fas fa-sync-alt"></i> Refresh</button></div><div id="riders-container" class="space-y-3"><div class="text-center py-8 text-gray-400"><div class="loading-spinner"></div><span class="ml-2">Loading...</span></div></div></div>
+            <div id="history-tab" class="p-4 hidden"><div class="flex justify-between items-center mb-4"><h2 class="text-lg font-bold text-gray-800">Payout History</h2><div class="flex gap-2"><select id="history-filter" class="border border-gray-200 rounded-lg px-3 py-1 text-sm"><option value="all">All</option><option value="vendors">Vendors</option><option value="riders">Riders</option></select><button id="refresh-history" class="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-lg text-sm transition"><i class="fas fa-sync-alt"></i> Refresh</button></div></div><div id="history-container" class="space-y-3"><div class="text-center py-8 text-gray-400"><div class="loading-spinner"></div><span class="ml-2">Loading...</span></div></div></div>
+        </div>
+    </main>
+
+    <div id="process-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4"><div class="bg-white rounded-xl max-w-md w-full p-6"><h3 class="text-lg font-bold text-gray-800 mb-4">Process Payout</h3><div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-1">Transaction Reference (Optional)</label><input type="text" id="transaction-ref" placeholder="e.g., MOMO-123456" class="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-purple-500"></div><div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-1">Notes (Optional)</label><textarea id="process-notes" rows="2" placeholder="Additional notes..." class="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-purple-500"></textarea></div><div class="flex gap-3"><button id="confirm-process" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg transition">Confirm Process</button><button id="cancel-process" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 rounded-lg transition">Cancel</button></div></div></div>
+    <div id="reject-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4"><div class="bg-white rounded-xl max-w-md w-full p-6"><h3 class="text-lg font-bold text-gray-800 mb-4">Reject Payout</h3><div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-1">Reason for Rejection</label><textarea id="reject-reason" rows="3" placeholder="Enter reason for rejection..." class="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-red-500"></textarea></div><div class="flex gap-3"><button id="confirm-reject" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg transition">Confirm Reject</button><button id="cancel-reject" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 rounded-lg transition">Cancel</button></div></div></div>
+
+    <footer class="bg-white border-t mt-8 py-4 text-center text-gray-400 text-xs"><p>© 2025 CampusDash – Admin Portal</p></footer>
 
     <script>
         const API_BASE = 'https://campusdash-backend.onrender.com';
-        
-        // Toggle password visibility
-        function togglePassword() {
-            const passwordInput = document.getElementById('password');
-            const icon = document.getElementById('toggle-icon');
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                icon.classList.remove('fa-eye-slash');
-                icon.classList.add('fa-eye');
-            } else {
-                passwordInput.type = 'password';
-                icon.classList.remove('fa-eye');
-                icon.classList.add('fa-eye-slash');
-            }
-        }
-        
-        // Copy to clipboard helper
-        function copyToClipboard(text) {
-            navigator.clipboard.writeText(text);
-            const notification = document.createElement('div');
-            notification.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg text-sm shadow-lg z-50';
-            notification.innerHTML = '<i class="fas fa-check-circle mr-2"></i>Copied!';
-            document.body.appendChild(notification);
-            setTimeout(() => notification.remove(), 2000);
-        }
-        
-        // Show error message
-        function showError(message) {
-            const errorDiv = document.getElementById('error-message');
-            const errorText = document.getElementById('error-text');
-            errorText.textContent = message;
-            errorDiv.classList.remove('hidden');
-            setTimeout(() => {
-                errorDiv.classList.add('hidden');
-            }, 5000);
-        }
-        
-        // Hide error message
-        function hideError() {
-            document.getElementById('error-message').classList.add('hidden');
-        }
-        
-        // Set loading state
-        function setLoading(isLoading) {
-            const btn = document.getElementById('login-btn');
-            if (isLoading) {
-                btn.disabled = true;
-                btn.innerHTML = '<div class="loading-spinner"></div> Logging in...';
-            } else {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login';
-            }
-        }
-        
-        // Check if already logged in
-        function checkExistingSession() {
+        let currentPayoutId = null;
+        let currentPayoutType = null;
+        let isLoading = false;
+
+        // Simple check - no redirect loop
+        function checkAuth() {
             const token = localStorage.getItem('adminToken');
-            const expiry = localStorage.getItem('adminTokenExpiry');
-            
-            if (token && expiry) {
-                const now = Date.now();
-                if (now < parseInt(expiry)) {
-                    // Token is still valid, redirect to dashboard
-                    window.location.href = 'admin-dashboard.html';
-                    return true;
-                } else {
-                    // Token expired, clear it
-                    localStorage.removeItem('adminToken');
-                    localStorage.removeItem('adminTokenExpiry');
-                    localStorage.removeItem('adminEmail');
-                }
+            if (!token) {
+                window.location.href = 'admin-login.html';
+                return false;
             }
-            return false;
+            return true;
         }
-        
-        // Validate email format
-        function isValidEmail(email) {
-            const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            return re.test(email);
+
+        function logout() {
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('adminEmail');
+            localStorage.removeItem('adminName');
+            window.location.href = 'admin-login.html';
         }
-        
-        // Handle login form submission
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
-            
-            // Clear previous errors
-            hideError();
-            
-            // Validate inputs
-            if (!email || !password) {
-                showError('Please enter both email and password');
-                return;
-            }
-            
-            if (!isValidEmail(email)) {
-                showError('Please enter a valid email address');
-                return;
-            }
-            
-            if (password.length < 6) {
-                showError('Password must be at least 6 characters');
-                return;
-            }
-            
-            setLoading(true);
-            
+
+        async function fetchAPI(url, options = {}) {
+            const token = localStorage.getItem('adminToken');
             try {
-                // First, check if admin exists in database
-                // For now, use a secure comparison for demo admin
-                // In production, this should call your backend admin login endpoint
-                
-                // Production-ready admin authentication
-                // Uncomment this block when you have the backend admin login endpoint ready
-                /*
-                const response = await fetch(`${API_BASE}/api/admin/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
+                const response = await fetch(url, {
+                    ...options,
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, ...options.headers }
                 });
-                
-                const data = await response.json();
-                
-                if (response.ok && data.success) {
-                    const token = data.token;
-                    const expiry = Date.now() + (7 * 24 * 60 * 60 * 1000); // 7 days
-                    
-                    localStorage.setItem('adminToken', token);
-                    localStorage.setItem('adminTokenExpiry', expiry);
-                    localStorage.setItem('adminEmail', email);
-                    localStorage.setItem('adminName', data.admin.name || 'Admin');
-                    
-                    window.location.href = 'admin-dashboard.html';
-                } else {
-                    showError(data.error || 'Invalid email or password');
+                if (response.status === 401) {
+                    localStorage.removeItem('adminToken');
+                    window.location.href = 'admin-login.html';
+                    return null;
                 }
-                */
-                
-                // Temporary demo authentication (Replace with above when backend ready)
-                // This is for testing purposes only
-                if (email === 'admin@campusdash.com' && password === 'Admin@123') {
-                    // Generate a simple token (in production, this comes from backend)
-                    const demoToken = 'admin_' + btoa(email + Date.now());
-                    const expiry = Date.now() + (7 * 24 * 60 * 60 * 1000);
-                    
-                    localStorage.setItem('adminToken', demoToken);
-                    localStorage.setItem('adminTokenExpiry', expiry);
-                    localStorage.setItem('adminEmail', email);
-                    localStorage.setItem('adminName', 'Super Admin');
-                    
-                    window.location.href = 'admin-dashboard.html';
-                } else {
-                    showError('Invalid email or password. Please use the demo credentials below.');
-                }
-                
+                return response;
             } catch (err) {
-                console.error('Login error:', err);
-                showError('Network error. Please check your connection and try again.');
-            } finally {
-                setLoading(false);
+                console.error('API Error:', err);
+                return null;
             }
-        });
-        
-        // Check for existing session on page load
-        if (checkExistingSession()) {
-            // Redirect will happen in the function
         }
-        
-        // Add enter key support
-        document.getElementById('password').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                document.getElementById('login-form').dispatchEvent(new Event('submit'));
-            }
-        });
+
+        function showConnectionStatus(message, isError = true) {
+            const statusDiv = document.getElementById('connection-status');
+            const msgSpan = document.getElementById('connection-message');
+            msgSpan.textContent = message;
+            statusDiv.classList.remove('hidden');
+            setTimeout(() => statusDiv.classList.add('hidden'), 5000);
+        }
+
+        async function loadStats() {
+            try {
+                const res = await fetchAPI(`${API_BASE}/api/admin/payouts/stats`);
+                if (res && res.ok) {
+                    const stats = await res.json();
+                    document.getElementById('pending-count').innerText = (stats.pending?.vendors?.count || 0) + (stats.pending?.riders?.count || 0);
+                    document.getElementById('pending-amount').innerText = `₵${(stats.pending?.total || 0).toFixed(2)}`;
+                    document.getElementById('paid-month').innerText = `₵${(stats.this_month?.total || 0).toFixed(2)}`;
+                    document.getElementById('total-count').innerText = (stats.this_month?.vendors?.count || 0) + (stats.this_month?.riders?.count || 0);
+                }
+            } catch (err) { console.error('Stats error:', err); }
+        }
+
+        async function loadVendorPayouts() {
+            const container = document.getElementById('vendors-container');
+            container.innerHTML = '<div class="text-center py-8 text-gray-400"><div class="loading-spinner"></div><span class="ml-2">Loading...</span></div>';
+            try {
+                const res = await fetchAPI(`${API_BASE}/api/admin/payouts/vendors/pending`);
+                if (res && res.ok) {
+                    const data = await res.json();
+                    if (!data.payouts || data.payouts.length === 0) {
+                        container.innerHTML = '<div class="text-center py-8 text-gray-400">✨ No pending vendor payouts</div>';
+                        return;
+                    }
+                    container.innerHTML = data.payouts.map(p => `<div class="payout-card bg-white border border-gray-200 rounded-lg p-4"><div class="flex flex-wrap justify-between items-start gap-3"><div class="flex-1"><div class="flex items-center gap-2 flex-wrap mb-2"><span class="font-bold text-gray-800">${escapeHtml(p.vendor_name)}</span><span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">Vendor</span></div><div class="text-sm text-gray-600 space-y-1"><div><i class="fas fa-envelope w-5"></i> ${escapeHtml(p.vendor_email)}</div><div><i class="fas fa-phone w-5"></i> ${escapeHtml(p.vendor_phone)}</div><div><i class="fas fa-mobile-alt w-5"></i> ${escapeHtml(p.mobile_money_number || 'Not set')}</div><div><i class="fas fa-calendar w-5"></i> Requested: ${new Date(p.created_at).toLocaleString()}</div></div></div><div class="text-right"><div class="text-2xl font-bold text-purple-600">₵${parseFloat(p.amount).toFixed(2)}</div><div class="text-xs text-gray-400">${p.payment_method}</div><div class="payout-actions flex gap-2 mt-3"><button onclick="openProcessModal(${p.id}, 'vendor')" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg text-sm transition"><i class="fas fa-check"></i> Process</button><button onclick="openRejectModal(${p.id}, 'vendor')" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-lg text-sm transition"><i class="fas fa-times"></i> Reject</button></div></div></div></div>`).join('');
+                } else { container.innerHTML = '<div class="text-center py-8 text-red-500">❌ Failed to load</div>'; }
+            } catch (err) { container.innerHTML = '<div class="text-center py-8 text-red-500">❌ Error loading</div>'; }
+        }
+
+        async function loadRiderPayouts() {
+            const container = document.getElementById('riders-container');
+            container.innerHTML = '<div class="text-center py-8 text-gray-400"><div class="loading-spinner"></div><span class="ml-2">Loading...</span></div>';
+            try {
+                const res = await fetchAPI(`${API_BASE}/api/admin/payouts/riders/pending`);
+                if (res && res.ok) {
+                    const data = await res.json();
+                    if (!data.payouts || data.payouts.length === 0) { container.innerHTML = '<div class="text-center py-8 text-gray-400">✨ No pending rider payouts</div>'; return; }
+                    container.innerHTML = data.payouts.map(p => `<div class="payout-card bg-white border border-gray-200 rounded-lg p-4"><div class="flex flex-wrap justify-between items-start gap-3"><div class="flex-1"><div class="flex items-center gap-2 flex-wrap mb-2"><span class="font-bold text-gray-800">${escapeHtml(p.rider_name)}</span><span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Rider</span></div><div class="text-sm text-gray-600 space-y-1"><div><i class="fas fa-envelope w-5"></i> ${escapeHtml(p.rider_email)}</div><div><i class="fas fa-phone w-5"></i> ${escapeHtml(p.rider_phone)}</div><div><i class="fas fa-mobile-alt w-5"></i> ${escapeHtml(p.mobile_money_number || 'Not set')}</div><div><i class="fas fa-calendar w-5"></i> Requested: ${new Date(p.created_at).toLocaleString()}</div></div></div><div class="text-right"><div class="text-2xl font-bold text-blue-600">₵${parseFloat(p.amount).toFixed(2)}</div><div class="text-xs text-gray-400">${p.payment_method}</div><div class="payout-actions flex gap-2 mt-3"><button onclick="openProcessModal(${p.id}, 'rider')" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg text-sm transition"><i class="fas fa-check"></i> Process</button><button onclick="openRejectModal(${p.id}, 'rider')" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-lg text-sm transition"><i class="fas fa-times"></i> Reject</button></div></div></div></div>`).join('');
+                } else { container.innerHTML = '<div class="text-center py-8 text-red-500">❌ Failed to load</div>'; }
+            } catch (err) { container.innerHTML = '<div class="text-center py-8 text-red-500">❌ Error loading</div>'; }
+        }
+
+        async function loadHistory(filter = 'all') {
+            const container = document.getElementById('history-container');
+            container.innerHTML = '<div class="text-center py-8 text-gray-400"><div class="loading-spinner"></div><span class="ml-2">Loading...</span></div>';
+            try {
+                const url = filter === 'all' ? `${API_BASE}/api/admin/payouts/history` : `${API_BASE}/api/admin/payouts/history?type=${filter}`;
+                const res = await fetchAPI(url);
+                if (res && res.ok) {
+                    const payouts = await res.json();
+                    if (!payouts || payouts.length === 0) { container.innerHTML = '<div class="text-center py-8 text-gray-400">📋 No payout history</div>'; return; }
+                    container.innerHTML = payouts.map(p => `<div class="bg-white border border-gray-200 rounded-lg p-4"><div class="flex flex-wrap justify-between items-start gap-3"><div class="flex-1"><div class="flex items-center gap-2 flex-wrap mb-2"><span class="font-bold text-gray-800">${escapeHtml(p.user_name || p.vendor_name || p.rider_name)}</span><span class="text-xs ${p.user_type === 'vendor' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'} px-2 py-0.5 rounded-full">${p.user_type === 'vendor' ? 'Vendor' : 'Rider'}</span><span class="text-xs ${p.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'} px-2 py-0.5 rounded-full">${p.status}</span></div><div class="text-sm text-gray-600"><div><i class="fas fa-calendar w-5"></i> Processed: ${new Date(p.processed_at).toLocaleString()}</div><div><i class="fas fa-receipt w-5"></i> Ref: ${p.reference || 'N/A'}</div>${p.notes ? `<div><i class="fas fa-sticky-note w-5"></i> ${escapeHtml(p.notes)}</div>` : ''}</div></div><div class="text-right"><div class="text-xl font-bold ${p.status === 'completed' ? 'text-green-600' : 'text-red-600'}">₵${parseFloat(p.amount).toFixed(2)}</div><div class="text-xs text-gray-400">${p.payment_method}</div></div></div></div>`).join('');
+                } else { container.innerHTML = '<div class="text-center py-8 text-red-500">❌ Failed to load history</div>'; }
+            } catch (err) { container.innerHTML = '<div class="text-center py-8 text-red-500">❌ Error loading history</div>'; }
+        }
+
+        const processModal = document.getElementById('process-modal'), rejectModal = document.getElementById('reject-modal');
+        function openProcessModal(id, type) { currentPayoutId = id; currentPayoutType = type; document.getElementById('transaction-ref').value = ''; document.getElementById('process-notes').value = ''; processModal.classList.remove('hidden'); }
+        function openRejectModal(id, type) { currentPayoutId = id; currentPayoutType = type; document.getElementById('reject-reason').value = ''; rejectModal.classList.remove('hidden'); }
+        async function processPayout() {
+            const transactionRef = document.getElementById('transaction-ref').value, notes = document.getElementById('process-notes').value;
+            const url = currentPayoutType === 'vendor' ? `${API_BASE}/api/admin/payouts/vendors/${currentPayoutId}/process` : `${API_BASE}/api/admin/payouts/riders/${currentPayoutId}/process`;
+            const btn = document.getElementById('confirm-process'), originalText = btn.innerHTML;
+            btn.innerHTML = '<div class="loading-spinner"></div> Processing...'; btn.disabled = true;
+            try {
+                const res = await fetchAPI(url, { method: 'PATCH', body: JSON.stringify({ transaction_reference: transactionRef, notes }) });
+                if (res && res.ok) { alert('✅ Payout processed!'); processModal.classList.add('hidden'); await Promise.all([loadStats(), loadVendorPayouts(), loadRiderPayouts()]); }
+                else { alert('❌ Failed to process'); }
+            } catch (err) { alert('Network error'); } finally { btn.innerHTML = originalText; btn.disabled = false; }
+        }
+        async function rejectPayout() {
+            const reason = document.getElementById('reject-reason').value;
+            if (!reason) { alert('Please provide a reason'); return; }
+            const url = currentPayoutType === 'vendor' ? `${API_BASE}/api/admin/payouts/vendors/${currentPayoutId}/reject` : `${API_BASE}/api/admin/payouts/riders/${currentPayoutId}/reject`;
+            const btn = document.getElementById('confirm-reject'), originalText = btn.innerHTML;
+            btn.innerHTML = '<div class="loading-spinner"></div> Rejecting...'; btn.disabled = true;
+            try {
+                const res = await fetchAPI(url, { method: 'PATCH', body: JSON.stringify({ reason }) });
+                if (res && res.ok) { alert('✅ Payout rejected!'); rejectModal.classList.add('hidden'); await Promise.all([loadStats(), loadVendorPayouts(), loadRiderPayouts()]); }
+                else { alert('❌ Failed to reject'); }
+            } catch (err) { alert('Network error'); } finally { btn.innerHTML = originalText; btn.disabled = false; }
+        }
+
+        function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m])); }
+
+        const vendorsTab = document.getElementById('vendors-tab'), ridersTab = document.getElementById('riders-tab'), historyTab = document.getElementById('history-tab');
+        document.getElementById('tab-vendors').addEventListener('click', () => { vendorsTab.classList.remove('hidden'); ridersTab.classList.add('hidden'); historyTab.classList.add('hidden'); document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('border-purple-600', 'text-purple-600'); b.classList.add('border-transparent', 'text-gray-500'); }); document.getElementById('tab-vendors').classList.add('border-purple-600', 'text-purple-600'); loadVendorPayouts(); });
+        document.getElementById('tab-riders').addEventListener('click', () => { vendorsTab.classList.add('hidden'); ridersTab.classList.remove('hidden'); historyTab.classList.add('hidden'); document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('border-purple-600', 'text-purple-600'); b.classList.add('border-transparent', 'text-gray-500'); }); document.getElementById('tab-riders').classList.add('border-purple-600', 'text-purple-600'); loadRiderPayouts(); });
+        document.getElementById('tab-history').addEventListener('click', () => { vendorsTab.classList.add('hidden'); ridersTab.classList.add('hidden'); historyTab.classList.remove('hidden'); document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('border-purple-600', 'text-purple-600'); b.classList.add('border-transparent', 'text-gray-500'); }); document.getElementById('tab-history').classList.add('border-purple-600', 'text-purple-600'); loadHistory(document.getElementById('history-filter').value); });
+        document.getElementById('refresh-vendors').addEventListener('click', loadVendorPayouts);
+        document.getElementById('refresh-riders').addEventListener('click', loadRiderPayouts);
+        document.getElementById('refresh-history').addEventListener('click', () => loadHistory(document.getElementById('history-filter').value));
+        document.getElementById('history-filter').addEventListener('change', (e) => loadHistory(e.target.value));
+        document.getElementById('confirm-process').addEventListener('click', processPayout);
+        document.getElementById('cancel-process').addEventListener('click', () => processModal.classList.add('hidden'));
+        document.getElementById('confirm-reject').addEventListener('click', rejectPayout);
+        document.getElementById('cancel-reject').addEventListener('click', () => rejectModal.classList.add('hidden'));
+        processModal.addEventListener('click', (e) => { if (e.target === processModal) processModal.classList.add('hidden'); });
+        rejectModal.addEventListener('click', (e) => { if (e.target === rejectModal) rejectModal.classList.add('hidden'); });
+
+        if (checkAuth()) { loadStats(); loadVendorPayouts(); }
     </script>
 </body>
 </html>
